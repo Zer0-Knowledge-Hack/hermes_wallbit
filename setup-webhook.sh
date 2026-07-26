@@ -45,6 +45,11 @@ printf '%s' "$BOT_TOKEN" | npx wrangler secret put BOT_TOKEN
 echo "==> Guardando WEBHOOK_SECRET"
 printf '%s' "$WEBHOOK_SECRET" | npx wrangler secret put WEBHOOK_SECRET
 
+if [ -n "${ZAVUDEV_API_KEY:-}" ]; then
+  echo "==> Guardando ZAVUDEV_API_KEY"
+  printf '%s' "$ZAVUDEV_API_KEY" | npx wrangler secret put ZAVUDEV_API_KEY
+fi
+
 echo "==> Registrando webhook (message + callback_query)"
 curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
   -H 'content-type: application/json' \
@@ -57,6 +62,7 @@ curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setMyCommands" \
   -d '{"commands":[
     {"command":"saldo","description":"Tu saldo y tu cartera"},
     {"command":"invertir","description":"Explorar donde invertir"},
+    {"command":"notificar","description":"Probar alerta proactiva via Zavudev SDK"},
     {"command":"vincular","description":"Conectar tu cuenta de Wallbit"},
     {"command":"desvincular","description":"Quitar el acceso a tu cuenta"},
     {"command":"revocar","description":"Eliminar la API key en Wallbit"},

@@ -30,6 +30,7 @@ import {
   revokeApiKey,
   type WallbitFailure,
 } from "./wallbit";
+import { sendZavudevAlert } from "./zavudev";
 
 /** How long an account snapshot stays fresh before we ask Wallbit again. */
 const SNAPSHOT_TTL_MS = 60_000;
@@ -351,6 +352,7 @@ async function handleUpdate(
           "\n\nComandos:\n" +
           "/saldo — tu saldo y tu cartera\n" +
           "/invertir — explorar dónde invertir\n" +
+          "/notificar — probar envío de alerta proactiva vía Zavudev SDK\n" +
           "/vincular — conectar tu cuenta de Wallbit\n" +
           "/desvincular — que deje de tener acceso (la key sigue viva en Wallbit)\n" +
           "/revocar — que Wallbit elimine la key definitivamente\n" +
@@ -480,6 +482,30 @@ async function handleUpdate(
         chatId,
         "🔎 <b>¿Dónde querés invertir?</b>\n\nElegí una categoría.",
         categoryKeyboard(),
+      );
+      return;
+    }
+
+    case "/notificar": {
+      await sendTyping(env.BOT_TOKEN, chatId);
+      const customText = message.text.replace(/^\/notificar(\s+|$)/i, "").trim();
+      const alertMessage = customText
+        ? `🔔 <b>Alerta de Hermes (vía Zavudev SDK):</b>\n\n${escapeHtml(customText)}`
+        : `🔔 <b>Alerta Proactiva de Hermes (vía Zavudev SDK):</b>\n\n` +
+          `¡La integración de Zavudev con Hermes Wallbit funciona correctamente para tu chat (${chatId})!`;
+
+      const result = await sendZavudevAlert(
+        env.ZAVUDEV_API_KEY,
+        chatId,
+        alertMessage,
+      );
+
+      await sendMessage(
+        env.BOT_TOKEN,
+        chatId,
+        result.ok
+          ? `✅ <b>Notificación proactiva enviada vía Zavudev.</b>\n\nID del mensaje: <code>${result.messageId}</code>\n<i>Deberías recibir el mensaje proactivo en este chat en breves instantes.</i>`
+          : `❌ <b>Fallo al notificar por Zavudev:</b>\n\n${escapeHtml(result.error ?? "Error desconocido")}`,
       );
       return;
     }

@@ -18,3 +18,6 @@ ENCRYPTION_KEY=
 
 # The URL printed by `wrangler deploy`, without a trailing slash.
 WORKER_URL=https://hermes-bot.YOUR-SUBDOMAIN.workers.dev
+
+# API key for Zavudev SDK (@zavudev/sdk) to send messages across channels.
+ZAVUDEV_API_KEY=

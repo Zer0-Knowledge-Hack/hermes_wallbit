@@ -11,4 +11,6 @@ export interface Env {
   WEBHOOK_SECRET: string;
   /** Root secret for encrypting stored credentials. Rotating it unlinks everyone. */
   ENCRYPTION_KEY: string;
+  /** API key for Zavudev SDK (@zavudev/sdk) to send messages across channels. */
+  ZAVUDEV_API_KEY?: string;
 }
