@@ -11,11 +11,27 @@ if [ ! -f .dev.vars ]; then
   echo "No existe .dev.vars — copiá .dev.vars.example y completalo." >&2
   exit 1
 fi
+run_wrangler() {
+  if command -v cmd.exe >/dev/null 2>&1; then
+    cmd.exe /c npx wrangler "$@"
+  else
+    npx wrangler "$@"
+  fi
+}
+
 
 set -a
 # shellcheck disable=SC1091
 . ./.dev.vars
 set +a
+
+BOT_TOKEN="${BOT_TOKEN//$'\r'/}"
+WEBHOOK_SECRET="${WEBHOOK_SECRET//$'\r'/}"
+WORKER_URL="${WORKER_URL//$'\r'/}"
+ZAVUDEV_API_KEY="${ZAVUDEV_API_KEY:-}"
+ZAVUDEV_API_KEY="${ZAVUDEV_API_KEY//$'\r'/}"
+WHATSAPP_API_URL="${WHATSAPP_API_URL:-}"
+WHATSAPP_API_URL="${WHATSAPP_API_URL//$'\r'/}"
 
 if [ -z "${BOT_TOKEN:-}" ] || [ -z "${WEBHOOK_SECRET:-}" ]; then
   echo "Faltan BOT_TOKEN o WEBHOOK_SECRET en .dev.vars" >&2
@@ -76,23 +92,23 @@ if [ -n "$current" ] && [ "$current" != "$WORKER_URL" ] && [ "${FORCE:-}" != "1"
 fi
 
 echo "==> Guardando BOT_TOKEN"
-printf '%s' "$BOT_TOKEN" | npx wrangler secret put BOT_TOKEN
+printf '%s' "$BOT_TOKEN" | run_wrangler secret put BOT_TOKEN
 
 echo "==> Guardando WEBHOOK_SECRET"
-printf '%s' "$WEBHOOK_SECRET" | npx wrangler secret put WEBHOOK_SECRET
+printf '%s' "$WEBHOOK_SECRET" | run_wrangler secret put WEBHOOK_SECRET
 
 if [ -n "${ZAVUDEV_API_KEY:-}" ]; then
   echo "==> Guardando ZAVUDEV_API_KEY"
-  printf '%s' "$ZAVUDEV_API_KEY" | npx wrangler secret put ZAVUDEV_API_KEY
+  printf '%s' "$ZAVUDEV_API_KEY" | run_wrangler secret put ZAVUDEV_API_KEY
 fi
 
 if [ -n "${WHATSAPP_API_URL:-}" ]; then
   echo "==> Guardando WHATSAPP_API_URL en los secretos del Worker"
-  printf '%s' "$WHATSAPP_API_URL" | npx wrangler secret put WHATSAPP_API_URL
+  printf '%s' "$WHATSAPP_API_URL" | run_wrangler secret put WHATSAPP_API_URL
 fi
 
 echo "==> Desplegando el Worker principal (hermes-bot) a Cloudflare"
-npx wrangler deploy
+run_wrangler deploy
 echo
 
 if [ -n "${WHATSAPP_API_URL:-}" ]; then

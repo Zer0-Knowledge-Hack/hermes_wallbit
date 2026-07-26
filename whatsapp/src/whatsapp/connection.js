@@ -53,9 +53,13 @@ export async function startBot() {
                     reconnecting = false;
                     startBot();
                 }, 3000);
-            } else if (!shouldReconnect) {
-                whatsappService.setConnectionInfo({ status: "disconnected", qr: null });
-                getIo()?.emit("whatsapp:status", { status: "disconnected", qr: null });
+            } else if (!shouldReconnect && !reconnecting) {
+                reconnecting = true;
+                logger.warn("Sesión cerrada por servidor o inválida (loggedOut/401). Limpiando sesión y generando nuevo QR en 3s...");
+                setTimeout(() => {
+                    reconnecting = false;
+                    resetSessionData();
+                }, 3000);
             }
         }
 
