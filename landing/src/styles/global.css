@@ -29,8 +29,13 @@
   color-scheme: light;
 }
 
+/*
+ * Dark tokens are declared twice on purpose: once for the OS preference when the
+ * visitor has not chosen, and once for an explicit choice. `:not([data-theme])`
+ * is what lets a manual "light" win over a dark OS setting.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --paper: #17151a;
     --paper-2: #1d1a21;
     --paper-3: #241f28;
@@ -50,6 +55,27 @@
 
     color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --paper: #17151a;
+  --paper-2: #1d1a21;
+  --paper-3: #241f28;
+  --line: #322c3a;
+  --line-soft: #241f2b;
+
+  --ink: #f2eee9;
+  --ink-2: #b6ada5;
+  --ink-3: #857c88;
+
+  --iris: #a89ce8;
+  --iris-soft: rgba(168, 156, 232, 0.14);
+  --clay: #dc9a76;
+  --sage: #7fc0a0;
+
+  --shadow: rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
 }
 
 * {
@@ -83,10 +109,99 @@ body::before {
 }
 
 @media (prefers-color-scheme: dark) {
-  body::before {
+  :root:not([data-theme="light"]) body::before {
     mix-blend-mode: screen;
     opacity: 0.022;
   }
+}
+
+:root[data-theme="dark"] body::before {
+  mix-blend-mode: screen;
+  opacity: 0.022;
+}
+
+/* ── Top bar ────────────────────────────────────────────── */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 16px 0;
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
+  backdrop-filter: saturate(150%) blur(12px);
+  border-bottom: 1px solid transparent;
+}
+
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.wordmark {
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.wordmark span {
+  color: var(--iris);
+}
+
+.theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.theme-toggle:hover {
+  color: var(--iris);
+  border-color: var(--iris);
+  transform: rotate(-14deg);
+}
+
+.theme-toggle svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* Only one icon is ever visible; the other is the state you can switch to. */
+.icon-moon {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .icon-sun {
+    display: none;
+  }
+  :root:not([data-theme="light"]) .icon-moon {
+    display: block;
+  }
+}
+
+:root[data-theme="dark"] .icon-sun {
+  display: none;
+}
+
+:root[data-theme="dark"] .icon-moon {
+  display: block;
+}
+
+:root[data-theme="light"] .icon-sun {
+  display: block;
+}
+
+:root[data-theme="light"] .icon-moon {
+  display: none;
 }
 
 .wrap {
