@@ -95,12 +95,37 @@ bash setup-webhook.sh            # sube secrets, registra webhook y comandos
 "callback_query"]`. **Sin `callback_query` los botones se dibujan y no hacen
 nada** — Telegram descarta esos updates en silencio.
 
+### Un bot por desarrollador — no es opcional
+
+**Un bot de Telegram tiene UNA sola URL de webhook, y `setWebhook` la reemplaza
+sin avisar.** Si dos personas comparten el token, la última que corra el setup se
+lleva el bot: el otro despliegue deja de recibir mensajes al instante y sus
+usuarios quedan desvinculados, porque el estado vive en los Durable Objects de
+cada cuenta.
+
+Peor: el despliegue abandonado **sigue teniendo alarmas programadas** y va a
+intentar escribirle a los usuarios con el mismo token. Mensajes fantasma desde un
+Worker que nadie mira.
+
+Para desarrollar, creá tu propio bot con `/newbot` y usá ese token. El bot de
+producción tiene un solo dueño y un solo Worker.
+
+`setup-webhook.sh` aborta si detecta que el bot ya apunta a otro Worker. Para
+tomarlo igual: `FORCE=1 bash setup-webhook.sh`.
+
 ### Diagnóstico
 
 ```bash
+bash diagnose-bot.sh     # por qué el bot no responde; mira pending_update_count
+bash drop-pending.sh     # vacía la cola de reintentos y re-registra limpio
 bash check-telegram.sh   # mide si el backend del bot en Telegram está sano
 npx wrangler tail        # logs en vivo
 ```
+
+**Si el bot deja de responder**, el número que importa es `pending_update_count`.
+Telegram reencola y reintenta cualquier update que el webhook no conteste con
+`2xx`. Por eso este Worker responde `200` siempre, incluso al rechazar: rechazar
+un update significa no procesarlo, no rechazar la entrega.
 
 ---
 

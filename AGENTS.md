@@ -51,7 +51,18 @@ Un Durable Object por `chat_id`, cada uno con su SQLite. El `chat_id` sale
 siempre del update de Telegram, **nunca de input del usuario**. No agregues rutas
 donde el usuario pueda elegir a qué sesión escribir.
 
-### 5. La idempotencia depende del Durable Object
+### 5. El webhook responde 200 SIEMPRE
+
+Telegram reencola y reintenta con backoff cualquier update que el webhook no
+conteste con `2xx`. Un `403` no es un rechazo: es una promesa de que Telegram va
+a volver a intentarlo, para siempre. Una ventana de `403` construye una cola que
+no drena y deja al bot sin responder mucho después de que el problema original
+desapareció. Ya pasó.
+
+Rechazar un update significa **no procesarlo**, no rechazar la entrega. Si vas a
+agregar validaciones en el handler, loguealas y devolvé `200` igual.
+
+### 6. La idempotencia depende del Durable Object
 
 No hay endpoint para consultar el estado de una orden. `claimTrade()` funciona
 porque un Durable Object atiende un request por vez, así que leer-y-escribir es

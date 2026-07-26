@@ -39,6 +39,30 @@ if [ "$status" != "200" ]; then
 fi
 echo "  OK"
 
+# A bot has exactly ONE webhook, and setWebhook replaces it silently. Two people
+# sharing a token will take the bot from each other without any warning, and all
+# state — linked accounts, conversations, alarms — is stranded in whichever
+# deployment just lost it.
+echo "==> Verificando a dónde apunta el webhook hoy"
+current="$(curl -sS --max-time 12 "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo" \
+  | grep -o '"url":"[^"]*"' | cut -d'"' -f4)"
+
+if [ -n "$current" ] && [ "$current" != "$WORKER_URL" ] && [ "${FORCE:-}" != "1" ]; then
+  echo >&2
+  echo "  ⚠ Este bot YA está registrado en otro Worker:" >&2
+  echo "      $current" >&2
+  echo "    y vos estás por apuntarlo a:" >&2
+  echo "      $WORKER_URL" >&2
+  echo >&2
+  echo "  Si seguís, ese despliegue deja de recibir mensajes al instante y sus" >&2
+  echo "  usuarios quedan desvinculados: los datos viven en SUS Durable Objects," >&2
+  echo "  no en los tuyos." >&2
+  echo >&2
+  echo "  Para desarrollar, creá tu propio bot con @BotFather y usá ESE token." >&2
+  echo "  Si de verdad querés tomar el bot: FORCE=1 bash setup-webhook.sh" >&2
+  exit 1
+fi
+
 echo "==> Guardando BOT_TOKEN"
 printf '%s' "$BOT_TOKEN" | npx wrangler secret put BOT_TOKEN
 
