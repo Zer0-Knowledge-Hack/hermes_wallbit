@@ -2,11 +2,14 @@ import whatsappService from "../services/whatsapp.service.js";
 import messageService from "../services/message.service.js";
 import auditService from "../services/audit.service.js";
 import sessionManager from "../session/session.manager.js";
+import { botReply } from "../utils/bot-reply.js";
 import { getIo } from "./index.js";
 
 export function registerSocketHandlers(io) {
     io.on("connection", (socket) => {
-        socket.emit("whatsapp:status", whatsappService.getConnectionInfo());
+        const waInfo = whatsappService.getConnectionInfo();
+        socket.emit("whatsapp:status", waInfo);
+        if (waInfo.qr) socket.emit("whatsapp:qr", waInfo.qr);
         socket.emit("dashboard:stats", getDashboardStats());
         socket.emit("chat:list", messageService.getConversations());
         socket.emit("wallbit:users", sessionManager.allPublic());
@@ -28,12 +31,8 @@ export function registerSocketHandlers(io) {
                 const sock = whatsappService.getSocket();
                 if (!sock) throw new Error("WhatsApp no conectado");
 
-                await sock.sendMessage(jid, { text });
-                const saved = messageService.saveOutgoing(jid, text);
+                await botReply(sock, jid, text);
                 auditService.logMessage(jid, "outgoing");
-
-                io.emit("message:new", saved);
-                io.emit("chat:update", messageService.getConversations());
             } catch (err) {
                 socket.emit("message:error", { error: err.message });
                 io.emit("error", { jid, message: err.message });

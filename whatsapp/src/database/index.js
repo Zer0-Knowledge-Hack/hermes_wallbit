@@ -14,6 +14,11 @@ const COLLECTIONS = [
     "assets_cache",
     "connect_tokens",
     "pending_trades",
+    "api_keys",
+    "gemini_config",
+    "app_settings",
+    "ai_conversations",
+    "ai_usage",
 ];
 
 class Database {
@@ -42,6 +47,13 @@ class Database {
 
     reset() {
         this.cache = {};
+        if (fs.existsSync(this.dataDir)) {
+            try {
+                fs.rmSync(this.dataDir, { recursive: true, force: true });
+            } catch {
+                // ignorar
+            }
+        }
         this.ensureDataDir();
         for (const name of COLLECTIONS) {
             this.cache[name] = [];
@@ -66,7 +78,6 @@ class Database {
     }
 
     persist(collection) {
-        this.ensureDataDir();
         fs.writeFileSync(this.filePath(collection), JSON.stringify(this.cache[collection], null, 2));
     }
 

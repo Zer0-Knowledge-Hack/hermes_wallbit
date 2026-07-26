@@ -1,6 +1,6 @@
 import db from "../database/index.js";
 import { encrypt, decrypt } from "../security/encryption.js";
-import { normalizeJid, phoneFromJid } from "../utils/phone.js";
+import { normalizeJid, phoneFromJid, normalizeWhatsApp } from "../utils/phone.js";
 import { SessionState, API_KEY_STATUS } from "./states.js";
 import logger from "../utils/logger.js";
 
@@ -30,6 +30,7 @@ class SessionManager {
         return {
             jid,
             phone: phoneFromJid(jid),
+            deliveryJid: null,
             state: SessionState.IDLE,
             apiKeyEncrypted: null,
             apiKeyStatus: API_KEY_STATUS.NONE,
@@ -40,6 +41,14 @@ class SessionManager {
             lastQueryAt: null,
             lastActivity: new Date().toISOString(),
         };
+    }
+
+    setDeliveryJid(jid, deliveryJid) {
+        const delivery = normalizeJid(deliveryJid);
+        return this.update(jid, {
+            deliveryJid: delivery,
+            phone: normalizeWhatsApp(delivery),
+        });
     }
 
     update(jid, updates) {

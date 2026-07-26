@@ -1,42 +1,19 @@
-import { BaseCommand } from "./base.command.js";
+import { BaseCommand, sendText } from "./base.command.js";
 import sessionManager from "../session/session.manager.js";
+import { formatConnectedWelcome, formatOnboardingWelcome } from "../utils/wallbit-messages.js";
 
 class MenuCommand extends BaseCommand {
     constructor() {
-        super("menu", "Menú principal", ["start", "inicio"]);
+        super("menu", "Menú principal", ["start", "inicio", "menú"]);
     }
 
-    async execute({ sock, from, jid }) {
-        const id = jid || from;
+    async execute(ctx) {
+        const id = ctx.jid || ctx.from;
+        const text = sessionManager.hasApiKey(id)
+            ? formatConnectedWelcome()
+            : formatOnboardingWelcome();
 
-        if (!sessionManager.hasApiKey(id)) {
-            await sock.sendMessage(id, {
-                text:
-`👋 Bienvenido a Wallbit WhatsApp Assistant.
-
-Para utilizar todas las funciones primero debes conectar tu cuenta Wallbit.
-
-Escribe *conectar* para comenzar.`,
-            });
-            return;
-        }
-
-        await sock.sendMessage(id, {
-            text:
-`🤖 *Wallbit WhatsApp Assistant*
-
-Comandos en español:
-• *saldo* — Tu saldo y cartera de inversión
-• *invertir* — Explorar e invertir (con confirmación)
-• *notificar* — Probar alerta proactiva (Zavudev SDK)
-• *whatshat* — Estado del túnel y bot de WhatsApp
-• *vincular* — Conectar tu cuenta de Wallbit
-• *desvincular* — Desconectar de este chat
-• *revocar* — Eliminar API Key definitivamente en Wallbit
-• *reset* — Borrar historial de nuestra conversación
-
-💡 _También puedes usar comandos en inglés o preguntarme lo que quieras en lenguaje natural._`,
-        });
+        await sendText(ctx, text);
     }
 }
 

@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --color-primary: #1677ff;
+        --color-bg: #0d1117;
+        --color-surface: #161b22;
+        --color-card: #1c2128;
+        --color-border: #30363d;
+    }
+
+    html {
+        @apply scroll-smooth;
+    }
+
+    body {
+        @apply bg-background text-white antialiased;
+        font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    }
+
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        @apply bg-transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        @apply bg-border rounded-full;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        @apply bg-muted/50;
+    }
+}
+
+@layer components {
+    .glass-card {
+        @apply rounded-2xl border border-border bg-card/80 backdrop-blur-xl shadow-card
+               transition-all duration-300 hover:border-primary/30 hover:shadow-glow;
+    }
+
+    .kpi-card {
+        @apply glass-card p-5 relative overflow-hidden;
+    }
+
+    .kpi-card::before {
+        content: "";
+        @apply absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none;
+    }
+
+    .nav-link {
+        @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-muted text-sm font-medium
+               transition-all duration-200 hover:bg-white/5 hover:text-white;
+    }
+
+    .nav-link.active {
+        @apply bg-primary/15 text-primary-light border border-primary/20;
+    }
+
+    .btn-primary {
+        @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
+               bg-primary text-white text-sm font-semibold transition-all duration-200
+               hover:bg-primary-hover active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+    }
+
+    .btn-ghost {
+        @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
+               text-muted text-sm font-medium transition-all duration-200
+               hover:bg-white/5 hover:text-white;
+    }
+
+    .btn-danger {
+        @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
+               bg-danger/15 text-danger border border-danger/30 text-sm font-semibold
+               transition-all duration-200 hover:bg-danger/25;
+    }
+
+    .input-field {
+        @apply w-full bg-surface border border-border rounded-xl px-4 py-2.5 text-sm text-white
+               placeholder:text-muted/60 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30
+               transition-all duration-200;
+    }
+
+    .badge {
+        @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+    }
+
+    .badge-success { @apply badge bg-success/15 text-success; }
+    .badge-warning { @apply badge bg-warning/15 text-warning; }
+    .badge-danger { @apply badge bg-danger/15 text-danger; }
+    .badge-info { @apply badge bg-info/15 text-info; }
+    .badge-muted { @apply badge bg-white/5 text-muted; }
+
+    .skeleton {
+        @apply animate-pulse bg-white/5 rounded-lg;
+        background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+    }
+
+    .data-table {
+        @apply w-full text-sm text-left;
+    }
+
+    .data-table thead {
+        @apply text-xs uppercase text-muted border-b border-border;
+    }
+
+    .data-table th {
+        @apply px-4 py-3 font-medium;
+    }
+
+    .data-table td {
+        @apply px-4 py-3 border-b border-border/50;
+    }
+
+    .data-table tbody tr {
+        @apply transition-colors hover:bg-white/[0.02];
+    }
+
+    .tab-btn {
+        @apply px-4 py-2 text-sm font-medium text-muted rounded-lg transition-all
+               hover:text-white hover:bg-white/5;
+    }
+
+    .tab-btn.active {
+        @apply text-primary-light bg-primary/10;
+    }
+
+    .toast {
+        @apply flex items-center gap-3 px-4 py-3 rounded-xl border shadow-xl backdrop-blur-xl
+               animate-slide-up min-w-[280px] max-w-sm;
+    }
+
+    .toast-success { @apply toast bg-success/10 border-success/30 text-success; }
+    .toast-error { @apply toast bg-danger/10 border-danger/30 text-danger; }
+    .toast-info { @apply toast bg-info/10 border-info/30 text-info; }
+    .toast-warning { @apply toast bg-warning/10 border-warning/30 text-warning; }
+}
+
+@layer utilities {
+    .text-gradient {
+        @apply bg-gradient-to-r from-primary-light to-primary bg-clip-text text-transparent;
+    }
+}

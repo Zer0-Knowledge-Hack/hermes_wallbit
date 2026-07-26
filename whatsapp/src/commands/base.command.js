@@ -1,4 +1,5 @@
 import sessionManager from "../session/session.manager.js";
+import { sendText } from "../utils/bot-reply.js";
 
 /**
  * Base class for WhatsApp commands
@@ -21,18 +22,19 @@ export class BaseCommand {
     }
 }
 
-export async function requireWallbit(sock, jid) {
-    const { ok, apiKey } = sessionManager.requireApiKey(jid);
+export async function requireWallbit(ctx) {
+    const id = ctx.jid || ctx.from;
+    const { ok, apiKey } = sessionManager.requireApiKey(id);
 
     if (!ok) {
-        await sock.sendMessage(jid, {
-            text: "⚠️ Debes conectar tu cuenta Wallbit primero.\n\nEscribe *conectar* para vincularla.",
-        });
+        await sendText(ctx, "⚠️ Debes conectar tu cuenta Wallbit primero.\n\nEscribe *vincular* para conectarla.");
         return null;
     }
 
     return apiKey;
 }
+
+export { sendText };
 
 export function recordQuery(jid, query) {
     sessionManager.recordQuery(jid, query);

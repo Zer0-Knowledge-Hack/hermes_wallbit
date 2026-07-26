@@ -1,15 +1,15 @@
 import client from "./client.js";
+import { buildTradePayload, buildFeesPayload } from "../utils/wallbit-messages.js";
 
 /**
  * Single entry point for all Wallbit REST operations.
- * Every call goes through client.request() via the helpers below.
  */
 class Wallbit {
     request(apiKey, method, path, options) {
         return client.request(apiKey, method, path, options);
     }
 
-    async validateApiKey(apiKey) {
+    validateApiKey(apiKey) {
         return this.getBalance(apiKey);
     }
 
@@ -41,12 +41,12 @@ class Wallbit {
         return client.get(apiKey, "/wallets", query);
     }
 
-    getAccount(apiKey, query) {
+    getAccount(apiKey, query = { country: "US", currency: "USD" }) {
         return client.get(apiKey, "/account-details", query);
     }
 
-    createTrade(apiKey, payload) {
-        return client.post(apiKey, "/trades", payload);
+    getCards(apiKey) {
+        return client.get(apiKey, "/cards");
     }
 
     getRates(apiKey, query) {
@@ -54,7 +54,25 @@ class Wallbit {
     }
 
     getFees(apiKey, payload) {
-        return client.post(apiKey, "/fees", payload);
+        const body = payload?.type ? payload : buildFeesPayload("TRADE");
+        return client.post(apiKey, "/fees", body);
+    }
+
+    createTrade(apiKey, plan) {
+        const body = plan.symbol && plan.direction
+            ? plan
+            : buildTradePayload({
+                symbol: plan.symbol,
+                direction: plan.direction || (plan.side === "sell" ? "SELL" : "BUY"),
+                amount: plan.amount,
+                currency: plan.currency || "USD",
+                orderType: plan.order_type || "MARKET",
+            });
+        return client.post(apiKey, "/trades", body);
+    }
+
+    internalOperation(apiKey, payload) {
+        return client.post(apiKey, "/operations/internal", payload);
     }
 
     revokeApiKey(apiKey) {

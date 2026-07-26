@@ -1,4 +1,4 @@
-import { BaseCommand, requireWallbit, recordQuery } from "./base.command.js";
+import { BaseCommand, requireWallbit, recordQuery, sendText } from "./base.command.js";
 import wallbit from "../wallbit/wallbit.js";
 import auditService from "../services/audit.service.js";
 import { formatMoney } from "../utils/format.js";
@@ -8,12 +8,12 @@ class TransactionsCommand extends BaseCommand {
         super("transactions", "Historial de transacciones", ["transacciones", "txs"]);
     }
 
-    async execute({ sock, from, jid, text }) {
-        const id = jid || from;
-        const apiKey = await requireWallbit(sock, id);
+    async execute(ctx) {
+        const id = ctx.jid || ctx.from;
+        const apiKey = await requireWallbit(ctx);
         if (!apiKey) return;
 
-        const parts = text.trim().toLowerCase().split(/\s+/);
+        const parts = ctx.text.trim().toLowerCase().split(/\s+/);
         const filter = parts[1] || "";
         const query = { limit: 10 };
 
@@ -27,7 +27,7 @@ class TransactionsCommand extends BaseCommand {
         auditService.logApiCall(id, "/transactions", result.status);
 
         if (!result.ok) {
-            await sock.sendMessage(id, { text: `❌ ${result.message}` });
+            await sendText(ctx, `❌ ${result.message}`);
             return;
         }
 
@@ -47,7 +47,7 @@ class TransactionsCommand extends BaseCommand {
 
         response += "\nFiltros: *transactions today*, *pending*, *completed*, *failed*";
 
-        await sock.sendMessage(id, { text: response });
+        await sendText(ctx, response);
     }
 }
 

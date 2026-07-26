@@ -15,7 +15,6 @@ import apiRoutes from "./routes/api.routes.js";
 import connectRoutes from "./routes/connect.routes.js";
 
 const app = express();
-app.set("trust proxy", 1);
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
@@ -47,12 +46,10 @@ startBot().catch((err) => {
     logger.error({ err: err.message }, "Error iniciando WhatsApp bot");
 });
 
-if (!process.env.VERCEL) {
-    setInterval(() => broadcastDashboard(), 10000);
+setInterval(() => broadcastDashboard(), 10000);
 
-    server.listen(config.port, "0.0.0.0", () => {
-        logger.info({ port: config.port, env: config.nodeEnv }, "Wallbit WhatsApp Assistant iniciado en 0.0.0.0");
-    });
-}
+server.listen(config.port, () => {
+    logger.info({ port: config.port, env: config.nodeEnv }, "Wallbit WhatsApp Assistant iniciado");
+});
 
 export default app;

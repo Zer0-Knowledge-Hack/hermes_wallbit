@@ -1,6 +1,7 @@
 import menuCommand from "./menu.command.js";
 import balanceCommand from "./balance.command.js";
 import portfolioCommand from "./portfolio.command.js";
+import tradeCommand from "./trade.command.js";
 import assetsCommand from "./assets.command.js";
 import walletCommand from "./wallet.command.js";
 import accountCommand from "./account.command.js";
@@ -9,7 +10,6 @@ import statusCommand from "./status.command.js";
 import configCommand from "./config.command.js";
 import disconnectCommand from "./disconnect.command.js";
 import helpCommand from "./help.command.js";
-import tradeCommand from "./trade.command.js";
 import revokeCommand from "./revoke.command.js";
 import resetCommand from "./reset.command.js";
 import notificarCommand from "./notificar.command.js";
@@ -18,6 +18,7 @@ export const commands = [
     menuCommand,
     balanceCommand,
     portfolioCommand,
+    tradeCommand,
     assetsCommand,
     walletCommand,
     accountCommand,
@@ -26,7 +27,6 @@ export const commands = [
     configCommand,
     disconnectCommand,
     helpCommand,
-    tradeCommand,
     revokeCommand,
     resetCommand,
     notificarCommand,

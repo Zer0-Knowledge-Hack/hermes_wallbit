@@ -2,7 +2,6 @@ import makeWASocket, {
     DisconnectReason,
     useMultiFileAuthState,
     fetchLatestBaileysVersion,
-    Browsers,
 } from "@whiskeysockets/baileys";
 import QRCode from "qrcode";
 import pino from "pino";
@@ -14,11 +13,32 @@ import messageRouter from "./router.js";
 import { getIo } from "../socket/index.js";
 import auditService from "../services/audit.service.js";
 import logger from "../utils/logger.js";
-import db from "../database/index.js";
+import messageService from "../services/message.service.js";
+import sessionManager from "../session/session.manager.js";
+import { normalizeJid } from "../utils/phone.js";
 
 let reconnecting = false;
+let activeSock = null;
+
+function teardownSocket(sock) {
+    if (!sock) return;
+    try {
+        sock.ev.removeAllListeners("connection.update");
+        sock.ev.removeAllListeners("messages.upsert");
+        sock.ev.removeAllListeners("creds.update");
+        sock.ev.removeAllListeners("lid-mapping.update");
+        sock.end(undefined);
+    } catch {
+        // ignore
+    }
+}
 
 export async function startBot() {
+    if (activeSock) {
+        teardownSocket(activeSock);
+        activeSock = null;
+    }
+
     const { state, saveCreds } = await useMultiFileAuthState(config.authDir);
     const { version } = await fetchLatestBaileysVersion();
 
@@ -26,13 +46,29 @@ export async function startBot() {
         version,
         auth: state,
         logger: pino({ level: "silent" }),
-        browser: Browsers.ubuntu("Chrome"),
-        printQRInTerminal: false,
     });
 
+    activeSock = sock;
     whatsappService.setSocket(sock);
 
     sock.ev.on("creds.update", saveCreds);
+
+    sock.ev.on("lid-mapping.update", (update) => {
+        const items = Array.isArray(update) ? update : [update];
+        for (const item of items) {
+            if (!item) continue;
+            const lid = item.lid || item.id;
+            const pn = item.pn || item.phoneNumber;
+            if (!lid || !pn) continue;
+
+            const lidJid = String(lid).includes("@") ? normalizeJid(lid) : `${String(lid).replace(/\D/g, "")}@lid`;
+            const delivery = normalizeJid(String(pn).includes("@") ? pn : `${String(pn).replace(/\D/g, "")}@s.whatsapp.net`);
+
+            sessionManager.setDeliveryJid(lidJid, delivery);
+            messageService.setDeliveryJid(lidJid, delivery);
+            logger.info({ lidJid, delivery }, "LID→PN mapping stored");
+        }
+    });
 
     sock.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect, qr } = update;
@@ -45,16 +81,10 @@ export async function startBot() {
         }
 
         if (connection === "close") {
-            const statusCode = lastDisconnect?.error?.output?.statusCode;
-            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+            const shouldReconnect =
+                lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
 
             logger.warn({ reason: lastDisconnect?.error, shouldReconnect }, "Conexión cerrada");
-
-            try {
-                sock.ev.removeAllListeners();
-            } catch {
-                // ignorar
-            }
 
             if (shouldReconnect && !reconnecting) {
                 reconnecting = true;
@@ -62,13 +92,9 @@ export async function startBot() {
                     reconnecting = false;
                     startBot();
                 }, 3000);
-            } else if (!shouldReconnect && !reconnecting) {
-                reconnecting = true;
-                logger.warn("Sesión cerrada por servidor o inválida (loggedOut/401). Limpiando sesión y generando nuevo QR en 3s...");
-                setTimeout(() => {
-                    reconnecting = false;
-                    resetSessionData();
-                }, 3000);
+            } else if (!shouldReconnect) {
+                whatsappService.setConnectionInfo({ status: "disconnected", qr: null });
+                getIo()?.emit("whatsapp:status", { status: "disconnected", qr: null });
             }
         }
 
@@ -82,6 +108,7 @@ export async function startBot() {
                 phone,
                 name,
                 qr: null,
+                connectedAt: new Date().toISOString(),
             });
 
             logger.info({ phone, name }, "WhatsApp conectado exitosamente");
@@ -91,13 +118,16 @@ export async function startBot() {
                 phone,
                 name,
                 qr: null,
+                connectedAt: new Date().toISOString(),
             });
         }
     });
 
-    sock.ev.on("messages.upsert", async ({ messages }) => {
-        const message = messages[0];
+    sock.ev.on("messages.upsert", async ({ messages, type }) => {
+        // Only handle live incoming messages — ignore history sync / duplicates
+        if (type !== "notify") return;
 
+        const message = messages[0];
         if (!message?.message) return;
         if (message.key.fromMe) return;
 
@@ -112,46 +142,24 @@ export async function startBot() {
 }
 
 export async function restartBot() {
-    const sock = whatsappService.getSocket();
-    if (sock) {
-        whatsappService.setSocket(null);
-        try {
-            sock.ev.removeAllListeners();
-            await sock.logout();
-        } catch {
-            // ignorar
-        }
-    }
+    teardownSocket(activeSock);
+    activeSock = null;
+    whatsappService.setSocket(null);
     return startBot();
 }
 
 export async function resetSessionData() {
-    const sock = whatsappService.getSocket();
-    if (sock) {
-        whatsappService.setSocket(null);
-        try {
-            sock.ev.removeAllListeners();
-            sock.end(undefined);
-        } catch {
-            // ignorar
-        }
-    }
+    teardownSocket(activeSock);
+    activeSock = null;
+    whatsappService.setSocket(null);
     whatsappService.setConnectionInfo({ status: "disconnected", qr: null, phone: null, name: null });
     getIo()?.emit("whatsapp:status", { status: "disconnected", qr: null });
 
     try {
         await fs.rm(config.authDir, { recursive: true, force: true });
-        await fs.mkdir(config.authDir, { recursive: true });
         logger.info("Carpeta auth borrada exitosamente");
     } catch (err) {
         logger.error({ err: err.message }, "Error al borrar carpeta auth");
-    }
-
-    try {
-        db.reset();
-        logger.info("Base de datos y carpeta data reiniciadas exitosamente");
-    } catch (err) {
-        logger.error({ err: err.message }, "Error al reiniciar base de datos");
     }
 
     return startBot();

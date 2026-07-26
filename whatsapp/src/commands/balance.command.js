@@ -1,6 +1,6 @@
-import { BaseCommand, requireWallbit, recordQuery } from "./base.command.js";
+import { BaseCommand, requireWallbit, recordQuery, sendText } from "./base.command.js";
 import wallbit from "../wallbit/wallbit.js";
-import { formatMoney } from "../utils/format.js";
+import { formatBalanceMessage } from "../utils/wallbit-messages.js";
 import auditService from "../services/audit.service.js";
 import { getIo } from "../socket/index.js";
 
@@ -9,30 +9,23 @@ class BalanceCommand extends BaseCommand {
         super("balance", "Consultar saldo checking", ["saldo", "/saldo", "/balance"]);
     }
 
-    async execute({ sock, from, jid }) {
-        const id = jid || from;
-        const apiKey = await requireWallbit(sock, id);
+    async execute(ctx) {
+        const id = ctx.jid || ctx.from;
+        const apiKey = await requireWallbit(ctx);
         if (!apiKey) return;
+
+        await sendText(ctx, "⏳ Consultando tu saldo...");
 
         const result = await wallbit.getBalance(apiKey);
         auditService.logApiCall(id, "/balance/checking", result.status);
 
         if (!result.ok) {
-            await sock.sendMessage(id, { text: `❌ ${result.message}` });
+            await sendText(ctx, `❌ ${result.message}`);
             return;
         }
 
         recordQuery(id, "balance");
-
-        const balances = result.data?.data || result.data || [];
-        const lines = Array.isArray(balances)
-            ? balances.map((b) => `• ${b.currency || "USD"}: ${formatMoney(b.amount || b.balance, b.currency || "USD")}`)
-            : [`• USD: ${formatMoney(balances.amount || 0)}`];
-
-        await sock.sendMessage(id, {
-            text: `💰 *Saldo Checking*\n\n${lines.join("\n")}`,
-        });
-
+        await sendText(ctx, formatBalanceMessage(result));
         getIo()?.emit("balance:updated", { jid: id, endpoint: "/balance/checking" });
     }
 }

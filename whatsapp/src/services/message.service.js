@@ -5,6 +5,13 @@ class MessageService {
     saveIncoming(message) {
         const jid = normalizeJid(message.key?.remoteJid);
         const phone = phoneFromJid(jid);
+        const rawId = message.key?.id;
+
+        if (rawId) {
+            const dup = db.find("messages", (m) => m.raw_id === rawId && m.jid === jid);
+            if (dup) return null;
+        }
+
         const text =
             message.message?.conversation ||
             message.message?.extendedTextMessage?.text ||
@@ -19,7 +26,7 @@ class MessageService {
             direction: "incoming",
             type,
             content: text,
-            raw_id: message.key?.id,
+            raw_id: rawId,
             timestamp: new Date(
                 (message.messageTimestamp || Date.now() / 1000) * 1000
             ).toISOString(),
@@ -55,7 +62,31 @@ class MessageService {
         return "text";
     }
 
-    upsertContact(jid, phone, lastMessage) {
+    getContact(jid) {
+        const normalized = normalizeJid(jid);
+        const phone = phoneFromJid(normalized);
+        return db.find("contacts", (c) => c.jid === normalized || c.whatsapp === phone) || null;
+    }
+
+    setDeliveryJid(jid, deliveryJid) {
+        const normalized = normalizeJid(jid);
+        const delivery = normalizeJid(deliveryJid);
+        const phone = normalizeWhatsApp(delivery);
+        db.upsert(
+            "contacts",
+            (c) => c.jid === normalized || c.whatsapp === phone || c.jid === normalized,
+            {
+                jid: normalized,
+                whatsapp: phone,
+                delivery_jid: delivery,
+                name: phone,
+                last_activity: new Date().toISOString(),
+                status: "active",
+            }
+        );
+    }
+
+    upsertContact(jid, phone, lastMessage, deliveryJid = null) {
         db.upsert(
             "contacts",
             (c) => c.jid === jid || c.whatsapp === phone,
@@ -66,6 +97,7 @@ class MessageService {
                 last_message: lastMessage,
                 last_activity: new Date().toISOString(),
                 status: "active",
+                ...(deliveryJid ? { delivery_jid: normalizeJid(deliveryJid) } : {}),
             }
         );
     }
@@ -88,6 +120,9 @@ class MessageService {
 
                 return {
                     ...contact,
+                    name: contact.delivery_jid
+                        ? normalizeWhatsApp(contact.delivery_jid)
+                        : (contact.name || contact.whatsapp),
                     unread,
                     last_message: last?.content || contact.last_message,
                     last_timestamp: last?.timestamp || contact.last_activity,

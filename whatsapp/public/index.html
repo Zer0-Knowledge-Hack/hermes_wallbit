@@ -1,191 +1,134 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full">
+<html lang="es" class="dark h-full">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Wallbit WhatsApp Assistant</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="stylesheet" href="/assets/css/dashboard.css">
+<title>Wallbit AI Dashboard — Enterprise SaaS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/app.css">
+<style>[x-cloak]{display:none!important}</style>
+<script type="importmap">
+{
+  "imports": {
+    "alpinejs": "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/module.esm.js"
+  }
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 </head>
-<body class="h-full bg-gray-950 text-gray-100">
+<body class="h-full overflow-hidden" x-data="appShell" x-init="init()" x-cloak>
 
-<div id="app" class="flex h-full">
+<div class="flex h-full">
 
   <!-- Sidebar -->
-  <aside id="sidebar" class="w-64 bg-gray-900 border-r border-gray-800 flex flex-col shrink-0">
-    <div class="p-5 border-b border-gray-800">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-lg">💰</div>
-        <div>
-          <div class="font-bold text-sm">Wallbit Assistant</div>
-          <div class="text-xs text-gray-500">WhatsApp CRM</div>
-        </div>
+  <aside :class="sidebarOpen ? 'w-64' : 'w-[72px]'" class="bg-sidebar border-r border-border flex flex-col shrink-0 transition-all duration-300 z-30">
+    <div class="h-16 flex items-center gap-3 px-4 border-b border-border shrink-0">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-light flex items-center justify-center shrink-0 shadow-glow">
+        <i class="bx bx-wallet text-white text-lg"></i>
+      </div>
+      <div x-show="sidebarOpen" x-transition class="min-w-0">
+        <div class="font-bold text-sm truncate">Wallbit AI</div>
+        <div class="text-[10px] text-muted uppercase tracking-widest">Enterprise v2.0</div>
       </div>
     </div>
-    <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
-      <a href="#" data-view="dashboard" class="nav-item active"><i class="fa fa-chart-line w-5"></i> Dashboard</a>
-      <a href="#" data-view="whatsapp" class="nav-item"><i class="fa fa-whatsapp w-5"></i> WhatsApp</a>
-      <a href="#" data-view="chats" class="nav-item"><i class="fa fa-comments w-5"></i> Chats</a>
-      <a href="#" data-view="contacts" class="nav-item"><i class="fa fa-address-book w-5"></i> Contactos</a>
-      <a href="#" data-view="users" class="nav-item"><i class="fa fa-users w-5"></i> Usuarios</a>
-      <a href="#" data-view="wallbit" class="nav-item"><i class="fa fa-building-columns w-5"></i> Wallbit</a>
-      <a href="#" data-view="logs" class="nav-item"><i class="fa fa-list w-5"></i> Logs</a>
-      <a href="#" data-view="settings" class="nav-item"><i class="fa fa-gear w-5"></i> Configuración</a>
-    </nav>
-    <div class="p-4 border-t border-gray-800 text-xs text-gray-500">
-      v1.0 — Plataforma Financiera WhatsApp
+
+    <nav class="flex-1 overflow-y-auto p-3 space-y-4" id="sidebar-nav"></nav>
+
+    <div class="p-3 border-t border-border">
+      <button @click="sidebarOpen = !sidebarOpen" class="nav-link w-full justify-center">
+        <i class="bx" :class="sidebarOpen ? 'bx-chevrons-left' : 'bx-chevrons-right'"></i>
+        <span x-show="sidebarOpen">Colapsar</span>
+      </button>
     </div>
   </aside>
 
   <!-- Main -->
   <div class="flex-1 flex flex-col min-w-0">
 
-    <!-- Top bar -->
-    <header class="h-14 bg-gray-900 border-b border-gray-800 flex items-center px-6 gap-4 shrink-0">
-      <button id="sidebarToggle" class="lg:hidden text-gray-400"><i class="fa fa-bars"></i></button>
-      <h1 id="pageTitle" class="font-semibold text-lg flex-1">Dashboard</h1>
-      <div id="waStatusBadge" class="flex items-center gap-2 text-sm px-3 py-1 rounded-full bg-gray-800">
-        <span class="w-2 h-2 rounded-full bg-gray-500" id="waDot"></span>
-        <span id="waStatusText">Desconectado</span>
+    <!-- Header -->
+    <header class="h-16 bg-surface/80 backdrop-blur-xl border-b border-border flex items-center px-4 lg:px-6 gap-4 shrink-0 sticky top-0 z-20">
+      <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden btn-ghost !p-2"><i class="bx bx-menu text-xl"></i></button>
+
+      <!-- Breadcrumbs -->
+      <div class="hidden sm:flex items-center gap-2 text-sm text-muted min-w-0">
+        <i class="bx bx-home text-xs"></i>
+        <span>/</span>
+        <span class="text-white font-medium truncate" x-text="pageTitle"></span>
       </div>
-      <button id="themeToggle" class="text-gray-400 hover:text-white"><i class="fa fa-moon"></i></button>
+
+      <div class="flex-1"></div>
+
+      <!-- Status badges -->
+      <div class="hidden md:flex items-center gap-2">
+        <span class="badge-muted"><span class="w-1.5 h-1.5 rounded-full inline-block mr-1" :class="waOk ? 'bg-success' : (waStatus === 'qr' ? 'bg-warning' : 'bg-danger')"></span><span x-text="waLabel">WhatsApp</span></span>
+        <span class="badge-muted"><span class="w-1.5 h-1.5 rounded-full inline-block mr-1" :class="serverOk ? 'bg-success' : 'bg-danger'"></span>Server</span>
+        <span class="badge-muted"><span class="w-1.5 h-1.5 rounded-full inline-block mr-1" :class="wallbitOk ? 'bg-success' : 'bg-warning'"></span>Wallbit</span>
+        <span class="badge-muted"><span class="w-1.5 h-1.5 rounded-full inline-block mr-1" :class="aiOk ? 'bg-success' : 'bg-warning'"></span>AI</span>
+      </div>
+
+      <!-- Search trigger -->
+      <button @click="commandOpen = true" class="btn-ghost !py-2 hidden sm:flex items-center gap-2 text-muted">
+        <i class="bx bx-search"></i>
+        <span class="text-xs">Buscar...</span>
+        <kbd class="px-1.5 py-0.5 rounded bg-white/5 border border-border text-[10px]">⌘K</kbd>
+      </button>
+
+      <!-- Notifications -->
+      <button class="btn-ghost !p-2 relative">
+        <i class="bx bx-bell text-xl"></i>
+        <span x-show="notifCount > 0" class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-danger rounded-full text-[10px] flex items-center justify-center" x-text="notifCount"></span>
+      </button>
+
+      <!-- User -->
+      <div class="flex items-center gap-2 pl-2 border-l border-border">
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-xs font-bold">A</div>
+        <span class="hidden lg:block text-sm font-medium">Admin</span>
+      </div>
     </header>
 
-    <!-- Content -->
-    <main class="flex-1 overflow-y-auto p-6">
-
-      <!-- Dashboard View -->
-      <div id="view-dashboard" class="view">
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-          <div class="stat-card"><div class="stat-label">Mensajes recibidos</div><div class="stat-value" id="statIncoming">0</div></div>
-          <div class="stat-card"><div class="stat-label">Mensajes enviados</div><div class="stat-value" id="statOutgoing">0</div></div>
-          <div class="stat-card"><div class="stat-label">Usuarios registrados</div><div class="stat-value" id="statUsers">0</div></div>
-          <div class="stat-card"><div class="stat-label">Cuentas Wallbit</div><div class="stat-value" id="statConnected">0</div></div>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div class="panel">
-            <h2 class="panel-title">Actividad de mensajes</h2>
-            <canvas id="activityChart" height="200"></canvas>
-          </div>
-          <div class="panel">
-            <h2 class="panel-title">Estado del sistema</h2>
-            <div class="space-y-3 text-sm" id="systemInfo">
-              <div class="flex justify-between"><span class="text-gray-400">WhatsApp</span><span id="sysWa">—</span></div>
-              <div class="flex justify-between"><span class="text-gray-400">Número</span><span id="sysPhone">—</span></div>
-              <div class="flex justify-between"><span class="text-gray-400">Consultas Wallbit</span><span id="sysApi">0</span></div>
-              <div class="flex justify-between"><span class="text-gray-400">Errores</span><span id="sysErrors">0</span></div>
-              <div class="flex justify-between"><span class="text-gray-400">Uptime</span><span id="sysUptime">—</span></div>
-              <div class="flex justify-between"><span class="text-gray-400">Memoria</span><span id="sysMemory">—</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- WhatsApp View -->
-      <div id="view-whatsapp" class="view hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div class="panel text-center">
-            <h2 class="panel-title">Conexión WhatsApp</h2>
-            <div id="qrContainer" class="my-6">
-              <img id="qrImage" class="mx-auto max-w-xs rounded-xl hidden" alt="QR Code">
-              <div id="qrPlaceholder" class="text-gray-500 py-12">
-                <i class="fa fa-qrcode text-6xl mb-4 block"></i>
-                Esperando código QR...
-              </div>
-            </div>
-            <div class="flex gap-3 justify-center flex-wrap">
-              <button id="btnRestart" class="btn-primary"><i class="fa fa-rotate"></i> Reiniciar sesión</button>
-              <button id="btnResetSession" class="btn-danger" title="Borra las carpetas auth y data para cambiar de cuenta o re-escaneo"><i class="fa fa-trash"></i> Borrar datos de sesión</button>
-            </div>
-          </div>
-          <div class="panel">
-            <h2 class="panel-title">Información de sesión</h2>
-            <div class="space-y-3 text-sm">
-              <div class="flex justify-between"><span class="text-gray-400">Estado</span><span id="waDetailStatus">—</span></div>
-              <div class="flex justify-between"><span class="text-gray-400">Número</span><span id="waDetailPhone">—</span></div>
-              <div class="flex justify-between"><span class="text-gray-400">Nombre</span><span id="waDetailName">—</span></div>
-              <div class="flex justify-between"><span class="text-gray-400">Conectado desde</span><span id="waDetailSince">—</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Chats View -->
-      <div id="view-chats" class="view hidden">
-        <div class="chat-layout">
-          <div class="chat-list panel !p-0">
-            <div class="p-4 border-b border-gray-800">
-              <input type="search" id="chatSearch" placeholder="Buscar chat..." class="input-field">
-            </div>
-            <div id="chatList" class="overflow-y-auto flex-1"></div>
-          </div>
-          <div class="chat-main panel !p-0 flex flex-col">
-            <div id="chatHeader" class="p-4 border-b border-gray-800 font-semibold text-gray-400">Selecciona un chat</div>
-            <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
-            <div id="chatInput" class="p-4 border-t border-gray-800 hidden">
-              <form id="sendForm" class="flex gap-2">
-                <input type="text" id="messageInput" placeholder="Escribe un mensaje..." class="input-field flex-1">
-                <button type="submit" class="btn-primary"><i class="fa fa-paper-plane"></i></button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Contacts View -->
-      <div id="view-contacts" class="view hidden">
-        <div class="panel">
-          <h2 class="panel-title">Contactos</h2>
-          <div id="contactsTable" class="overflow-x-auto"></div>
-        </div>
-      </div>
-
-      <!-- Users View -->
-      <div id="view-users" class="view hidden">
-        <div class="panel">
-          <h2 class="panel-title">Sesiones WhatsApp (por JID)</h2>
-          <div id="usersTable" class="overflow-x-auto"></div>
-        </div>
-      </div>
-
-      <!-- Wallbit View -->
-      <div id="view-wallbit" class="view hidden">
-        <div class="panel">
-          <h2 class="panel-title">Usuarios Wallbit</h2>
-          <p class="text-gray-400 text-sm mb-4">Sesiones por JID de WhatsApp. La API Key nunca se muestra — solo estado de vinculación y salud.</p>
-          <div id="wallbitUsers" class="overflow-x-auto"></div>
-        </div>
-      </div>
-
-      <!-- Logs View -->
-      <div id="view-logs" class="view hidden">
-        <div class="panel">
-          <h2 class="panel-title">Logs de auditoría</h2>
-          <div id="logsTable" class="overflow-x-auto max-h-96 overflow-y-auto"></div>
-        </div>
-      </div>
-
-      <!-- Settings View -->
-      <div id="view-settings" class="view hidden">
-        <div class="panel max-w-lg">
-          <h2 class="panel-title">Configuración</h2>
-          <div class="space-y-4 text-sm">
-            <div><span class="text-gray-400">Puerto</span><div>3000</div></div>
-            <div><span class="text-gray-400">Cifrado</span><div>AES-256-GCM + HKDF</div></div>
-            <div><span class="text-gray-400">API Wallbit</span><div>https://api.wallbit.io</div></div>
-            <div><span class="text-gray-400">Enlace seguro</span><div>Expira en 5 minutos</div></div>
-          </div>
-        </div>
-      </div>
-
-    </main>
+    <!-- Page content -->
+    <main class="flex-1 overflow-y-auto p-4 lg:p-6" id="page-content"></main>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.8.1/dist/socket.io.min.js"></script>
-<script src="/config.js"></script>
-<script src="/assets/js/dashboard.js"></script>
+<!-- Command Palette -->
+<div x-show="commandOpen" x-transition.opacity class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-sm" @keydown.escape.window="commandOpen = false">
+  <div @click.outside="commandOpen = false" class="w-full max-w-lg glass-card p-2 shadow-2xl animate-slide-up">
+    <div class="flex items-center gap-3 px-4 py-3 border-b border-border">
+      <i class="bx bx-search text-muted text-xl"></i>
+      <input x-model="commandQuery" x-ref="commandInput" @keydown.enter="runCommand()" type="text" placeholder="Buscar páginas, acciones..." class="flex-1 bg-transparent outline-none text-sm" autofocus>
+      <kbd class="text-[10px] text-muted px-1.5 py-0.5 border border-border rounded">ESC</kbd>
+    </div>
+    <div class="max-h-64 overflow-y-auto py-2">
+      <template x-for="cmd in filteredCommands" :key="cmd.id">
+        <button @click="goCommand(cmd)" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-white/5 rounded-lg transition-colors text-left">
+          <i class="bx text-lg text-primary-light" :class="cmd.icon"></i>
+          <span x-text="cmd.label"></span>
+        </button>
+      </template>
+      <p x-show="filteredCommands.length === 0" class="text-center text-muted text-sm py-4">Sin resultados</p>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+  <div class="glass-card p-6 w-full max-w-md mx-4 animate-slide-up">
+    <div class="flex items-center justify-between mb-4">
+      <h3 id="modalTitle" class="font-semibold text-lg"></h3>
+      <button type="button" id="modalClose" class="btn-ghost !p-1"><i class="bx bx-x text-xl"></i></button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" class="fixed bottom-4 right-4 z-[60] flex flex-col gap-2"></div>
+
+<script type="module" src="/assets/js/app.js"></script>
 </body>
 </html>

@@ -7,14 +7,14 @@ class TradeCommand extends BaseCommand {
         super("trade", "Invertir en un activo", ["invest", "invertir", "comprar"]);
     }
 
-    async execute({ sock, from, jid, text }) {
-        const id = jid || from;
-        const apiKey = await requireWallbit(sock, id);
+    async execute(ctx) {
+        const id = ctx.jid || ctx.from;
+        const apiKey = await requireWallbit(ctx);
         if (!apiKey) return;
 
-        auditService.log("trade_flow_start", text, { jid: id });
+        auditService.log("trade_flow_start", ctx.text, { jid: id });
 
-        await conversationManager.startInvestFlow(sock, id);
+        await conversationManager.startInvestFlow(ctx.sock, id);
     }
 }
 
