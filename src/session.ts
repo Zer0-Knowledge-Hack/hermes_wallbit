@@ -248,7 +248,30 @@ export class Session extends DurableObject<Env> {
       } satisfies StagedTrade),
     );
 
+    // Pointer to the offer currently on screen, so a "sí" typed instead of
+    // tapped can be answered with the button rather than dead-ending.
+    this.write("trade_current", id);
+
     return id;
+  }
+
+  /** The offer still awaiting a tap, or null. */
+  pendingTrade(): { id: string; symbol: string; amountUsd: number } | null {
+    const id = this.read("trade_current");
+    if (id === null) return null;
+
+    const raw = this.read(`trade:${id}`);
+    if (raw === null) return null;
+
+    try {
+      const trade = JSON.parse(raw) as StagedTrade;
+      if (trade.status !== "pending") return null;
+      if (Date.now() - trade.createdAt > TRADE_TTL_MS) return null;
+
+      return { id, symbol: trade.symbol, amountUsd: trade.amountUsd };
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -278,6 +301,8 @@ export class Session extends DurableObject<Env> {
   }
 
   settleTrade(id: string, status: "done" | "failed"): void {
+    this.clear("trade_current");
+
     const raw = this.read(`trade:${id}`);
     if (raw === null) return;
 
@@ -291,6 +316,7 @@ export class Session extends DurableObject<Env> {
 
   cancelTrade(id: string): void {
     this.clear(`trade:${id}`);
+    this.clear("trade_current");
   }
 
   // --- proactive watch ---------------------------------------------------

@@ -743,13 +743,38 @@ async function handleUpdate(
     }
   }
 
+  // People type "sí" instead of tapping. Without this the model repeats the
+  // plan from memory, the invented-figures guard discards it, and the user lands
+  // back at the category menu — losing the offer at the exact moment they
+  // decided to buy. The button still does the executing; this only re-offers it.
+  const pending = await session.pendingTrade();
+
+  if (pending !== null && AFFIRMATIVE.test(message.text.trim())) {
+    await sendMessage(
+      env.BOT_TOKEN,
+      chatId,
+      `Para confirmar la compra de <b>$${pending.amountUsd} de ${escapeHtml(pending.symbol)}</b>, ` +
+        `tocá el botón. No ejecuto nada por mensaje escrito.`,
+      [
+        [
+          {
+            text: `✅ Comprar $${pending.amountUsd} de ${pending.symbol}`,
+            callback_data: `buy:${pending.id}`,
+          },
+        ],
+        [{ text: "✕ Cancelar", callback_data: `cancel:${pending.id}` }],
+      ],
+    );
+    return;
+  }
+
   await sendTyping(env.BOT_TOKEN, chatId);
 
   const context = await loadAccount(session, profile.linked);
   const history = await session.history();
   const answer = await reply(env, profile, context, history, message.text);
 
-  const safe = guardAgainstInventedFigures(answer, context.state === "ready");
+  const safe = guardAgainstInventedFigures(answer, context.state === "ready", pending !== null);
   const keyboard = (await confirmKeyboard(session, answer.usedTools)) ?? safe.keyboard;
 
   // Off-topic turns stay out of history on purpose. Drift compounds: once such
@@ -854,6 +879,10 @@ function tradeReceiptCard(
  */
 const PRICE_PATTERN = /\$\s?\d|\d\s?%/;
 
+/** Short affirmations people type when they mean to press the confirm button. */
+const AFFIRMATIVE =
+  /^(s[ií]|s[ií]\s|dale|confirmo|confirmar|ok|oka?y|listo|hacelo|hazlo|adelante|de una|va|vamos|comprar|compra|proced[eé])\b[.!]*$/i;
+
 /**
  * The model will happily quote prices from its training data. In one test it
  * answered "SPY $420.12" with no tool call, then "SPY $738.93" from the real API
@@ -866,6 +895,7 @@ const PRICE_PATTERN = /\$\s?\d|\d\s?%/;
 function guardAgainstInventedFigures(
   answer: ReplyResult,
   linked: boolean,
+  tradePending = false,
 ): { text: string; keyboard?: InlineKeyboard } {
   const readSomething = answer.usedTools.length > 0;
 
@@ -874,6 +904,16 @@ function guardAgainstInventedFigures(
   }
 
   console.warn("blocked reply with figures and no tool call");
+
+  // Dumping someone at the category menu mid-purchase is the worst possible
+  // landing: they had already decided. With an offer on screen, point back at it.
+  if (tradePending) {
+    return {
+      text:
+        "Prefiero no repetir números de memoria. El cálculo que te mostré sigue " +
+        "válido — tocá el botón de confirmar si querés seguir.",
+    };
+  }
 
   return {
     text:
