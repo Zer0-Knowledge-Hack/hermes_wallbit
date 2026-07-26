@@ -2,6 +2,7 @@ import makeWASocket, {
     DisconnectReason,
     useMultiFileAuthState,
     fetchLatestBaileysVersion,
+    Browsers,
 } from "@whiskeysockets/baileys";
 import QRCode from "qrcode";
 import pino from "pino";
@@ -25,6 +26,8 @@ export async function startBot() {
         version,
         auth: state,
         logger: pino({ level: "silent" }),
+        browser: Browsers.ubuntu("Chrome"),
+        printQRInTerminal: false,
     });
 
     whatsappService.setSocket(sock);
@@ -42,10 +45,16 @@ export async function startBot() {
         }
 
         if (connection === "close") {
-            const shouldReconnect =
-                lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            const statusCode = lastDisconnect?.error?.output?.statusCode;
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
             logger.warn({ reason: lastDisconnect?.error, shouldReconnect }, "Conexión cerrada");
+
+            try {
+                sock.ev.removeAllListeners();
+            } catch {
+                // ignorar
+            }
 
             if (shouldReconnect && !reconnecting) {
                 reconnecting = true;
@@ -105,7 +114,9 @@ export async function startBot() {
 export async function restartBot() {
     const sock = whatsappService.getSocket();
     if (sock) {
+        whatsappService.setSocket(null);
         try {
+            sock.ev.removeAllListeners();
             await sock.logout();
         } catch {
             // ignorar
@@ -117,23 +128,20 @@ export async function restartBot() {
 export async function resetSessionData() {
     const sock = whatsappService.getSocket();
     if (sock) {
+        whatsappService.setSocket(null);
         try {
-            await sock.logout();
-        } catch {
-            // ignorar
-        }
-        try {
-            sock.end(new Error("Reset session"));
+            sock.ev.removeAllListeners();
+            sock.end(undefined);
         } catch {
             // ignorar
         }
     }
-    whatsappService.setSocket(null);
     whatsappService.setConnectionInfo({ status: "disconnected", qr: null, phone: null, name: null });
     getIo()?.emit("whatsapp:status", { status: "disconnected", qr: null });
 
     try {
         await fs.rm(config.authDir, { recursive: true, force: true });
+        await fs.mkdir(config.authDir, { recursive: true });
         logger.info("Carpeta auth borrada exitosamente");
     } catch (err) {
         logger.error({ err: err.message }, "Error al borrar carpeta auth");
