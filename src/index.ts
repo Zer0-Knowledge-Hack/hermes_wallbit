@@ -75,13 +75,29 @@ export default {
       return new Response("hermes-bot is running");
     }
 
+    // EVERY path below answers 200, on purpose.
+    //
+    // Telegram treats any non-2xx as a failed delivery and re-queues the update,
+    // retrying with backoff forever. A window of 403s — say, the deploy landing
+    // before the secret was set — builds a backlog that never drains and can
+    // leave the bot unresponsive long after the real problem is gone.
+    //
+    // Rejecting an update means not acting on it, not refusing the delivery.
+
     // Telegram echoes the secret configured with setWebhook. Without this check
     // anyone who discovers the Worker URL could inject fake updates.
     if (request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== env.WEBHOOK_SECRET) {
-      return new Response("forbidden", { status: 403 });
+      console.warn("rejected update: secret mismatch");
+      return new Response("ok");
     }
 
-    const update = (await request.json()) as TelegramUpdate;
+    let update: TelegramUpdate;
+    try {
+      update = (await request.json()) as TelegramUpdate;
+    } catch (error) {
+      console.error("rejected update: malformed body", error);
+      return new Response("ok");
+    }
 
     // Acknowledge immediately and finish the work in the background. If we held
     // the response open while the model runs, Telegram would time out, retry the
