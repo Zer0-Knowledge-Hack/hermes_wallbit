@@ -345,7 +345,26 @@ export async function runTool(
         ? (balanceResult.data?.data ?? []).find((row) => row.currency === "USD")?.balance ?? 0
         : 0;
 
+      const enough = usdBalance >= amount;
+
+      // Presented as blocked rather than as a plan. Offering a purchase that
+      // cannot happen produces a message with no confirm button under it, which
+      // reads to the user as if something already went through.
+      if (!enough) {
+        return {
+          executable: false,
+          blocked_reason: "insufficient_balance",
+          symbol: asset.symbol,
+          price_now: asset.price,
+          amount_usd: amount,
+          available_usd: usdBalance,
+          missing_usd: Number((amount - usdBalance).toFixed(2)),
+          note: `No alcanza: tiene $${usdBalance.toFixed(2)} y necesita $${amount}. Faltan $${(amount - usdBalance).toFixed(2)}. Decíselo y ofrecé ayudarle a recibir fondos. NO presentes esto como una compra ni digas que se hizo.`,
+        };
+      }
+
       return {
+        executable: true,
         symbol: asset.symbol,
         name: asset.name,
         price_now: asset.price,
@@ -357,10 +376,12 @@ export async function runTool(
         invested_usd: invested,
         approx_shares: Number((invested / asset.price).toFixed(4)),
         available_usd: usdBalance,
-        enough_balance: usdBalance >= amount,
-        note: feeKnown
-          ? "Cálculo al precio de ahora. No es una orden; la confirma el usuario."
-          : "Cálculo al precio de ahora, SIN comisión porque Wallbit no la devolvió. Aclaralo; no inventes un porcentaje.",
+        enough_balance: true,
+        note:
+          "NADA se ejecutó todavía. Esto es una simulación al precio de ahora. " +
+          "Hablá en condicional ('quedarían', 'comprarías'), nunca en pasado. " +
+          "La orden solo sale si el usuario toca el botón de confirmar." +
+          (feeKnown ? "" : " La comisión no se pudo leer: aclaralo y no inventes un porcentaje."),
       };
     }
 

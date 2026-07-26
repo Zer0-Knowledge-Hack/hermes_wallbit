@@ -807,6 +807,7 @@ async function confirmKeyboard(
     amount_usd?: number;
     price_now?: number;
     enough_balance?: boolean;
+    executable?: boolean;
   };
 
   if (
@@ -818,8 +819,9 @@ async function confirmKeyboard(
   }
 
   // No confirm button when the money is not there — offering it would only
-  // produce a rejected order.
-  if (output.enough_balance === false) {
+  // produce a rejected order. `executable` is the authoritative flag; the older
+  // `enough_balance` is still honoured for safety.
+  if (output.executable === false || output.enough_balance === false) {
     return [[{ text: "🔎 Ver otras opciones", callback_data: "cats" }]];
   }
 
