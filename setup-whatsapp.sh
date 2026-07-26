@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# Uploads the WhatsApp Cloud API credentials to the Worker.
+# Uploads whichever WhatsApp credentials are already filled in .dev.vars.
 #
-# Fill these in .dev.vars first (all from the Meta app dashboard):
-#   WHATSAPP_TOKEN         Access token — WhatsApp > API Setup
-#   WHATSAPP_PHONE_ID      "Identificador de número de teléfono", NOT the number
+# Deliberately incremental: Meta's own flow asks you to verify the webhook
+# BEFORE it hands over the rest of the credentials, so demanding all four up
+# front would block the very step that needs WHATSAPP_VERIFY_TOKEN.
+#
+#   WHATSAPP_VERIFY_TOKEN  invented by you; the same value goes in Meta's form
+#   WHATSAPP_TOKEN         WhatsApp > Configuración de la API
+#   WHATSAPP_PHONE_ID      same page, "Identificador de número de teléfono"
 #   WHATSAPP_APP_SECRET    Configuración > Básica > Clave secreta de la app
-#   WHATSAPP_VERIFY_TOKEN  Already generated; the same value goes in Meta's form
 #
 #   ! bash setup-whatsapp.sh
 set -uo pipefail
@@ -20,36 +23,54 @@ set -a
 . ./.dev.vars
 set +a
 
-missing=0
-for var in WHATSAPP_TOKEN WHATSAPP_PHONE_ID WHATSAPP_VERIFY_TOKEN WHATSAPP_APP_SECRET; do
+uploaded=0
+missing=()
+
+for var in WHATSAPP_VERIFY_TOKEN WHATSAPP_TOKEN WHATSAPP_PHONE_ID WHATSAPP_APP_SECRET; do
   if [ -z "${!var:-}" ]; then
-    echo "Falta $var en .dev.vars" >&2
-    missing=1
+    missing+=("$var")
+    continue
   fi
-done
-[ "$missing" -eq 1 ] && exit 1
 
-echo "==> Probando las credenciales contra Meta"
-probe="$(curl -sS --max-time 15 \
-  "https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_ID}?fields=display_phone_number,verified_name" \
-  -H "Authorization: Bearer ${WHATSAPP_TOKEN}" 2>&1)"
-
-if printf '%s' "$probe" | grep -q '"error"'; then
-  echo "  Meta rechazó las credenciales:" >&2
-  printf '  %s\n' "$probe" >&2
-  exit 1
-fi
-echo "  $probe"
-echo
-
-for var in WHATSAPP_TOKEN WHATSAPP_PHONE_ID WHATSAPP_VERIFY_TOKEN WHATSAPP_APP_SECRET; do
   echo "==> Subiendo $var"
-  printf '%s' "${!var}" | npx wrangler secret put "$var"
+  printf '%s' "${!var}" | npx wrangler secret put "$var" >/dev/null 2>&1 \
+    && echo "    ok" || echo "    FALLÓ" >&2
+  uploaded=$((uploaded + 1))
 done
 
 echo
-echo "==> Ahora en el panel de Meta > WhatsApp > Configuración > Webhooks:"
-echo "    URL de devolución de llamada:  ${WORKER_URL:-<WORKER_URL>}/whatsapp"
-echo "    Token de verificación:         (el WHATSAPP_VERIFY_TOKEN de .dev.vars)"
+
+# Only worth probing once both halves of the credential exist.
+if [ -n "${WHATSAPP_TOKEN:-}" ] && [ -n "${WHATSAPP_PHONE_ID:-}" ]; then
+  echo "==> Probando las credenciales contra Meta"
+  probe="$(curl -sS --max-time 15 \
+    "https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_ID}?fields=display_phone_number,verified_name" \
+    -H "Authorization: Bearer ${WHATSAPP_TOKEN}" 2>&1)"
+
+  if printf '%s' "$probe" | grep -q '"error"'; then
+    echo "    Meta las rechazó:" >&2
+    printf '    %s\n' "$probe" >&2
+  else
+    echo "    $probe"
+  fi
+  echo
+fi
+
+if [ "${#missing[@]}" -gt 0 ]; then
+  echo "Todavía faltan en .dev.vars:"
+  printf '  - %s\n' "${missing[@]}"
+  echo
+fi
+
+if [ -n "${WHATSAPP_VERIFY_TOKEN:-}" ]; then
+  echo "Webhook — pegá esto en Meta > WhatsApp > Configuración > Webhooks:"
+  echo "  URL:   ${WORKER_URL:-<WORKER_URL>}/whatsapp"
+  echo "  Token: ${WHATSAPP_VERIFY_TOKEN}"
+  echo
+  echo "Después de 'Verificar y guardar', suscribite al campo 'messages'."
+fi
+
 echo
-echo "    Después tocá 'Verificar y guardar' y suscribite al campo 'messages'."
+echo "Comprobación rápida de la verificación:"
+echo "  curl \"${WORKER_URL:-<WORKER_URL>}/whatsapp?hub.mode=subscribe&hub.verify_token=\$WHATSAPP_VERIFY_TOKEN&hub.challenge=12345\""
+echo "  Debe imprimir 12345. Si dice 'forbidden', el secret no está en el Worker."
