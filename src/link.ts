@@ -186,12 +186,19 @@ export async function handleLink(request: Request, env: Env): Promise<Response> 
 
     if (!(await session.saveApiKey(parsed.nonce, apiKey))) return expired();
 
-    // Close the loop in the chat so the user does not have to wonder.
+    // Watching starts here rather than waiting for the user to opt in: the whole
+    // point is that money does not sit idle unnoticed. /alertas turns it off.
+    const watching = await session.startWatching();
+
     const { firstName } = await session.profile();
     await sendMessage(
       env.BOT_TOKEN,
       Number(parsed.chatId),
-      `${firstName ? `Listo ${firstName}` : "Listo"}, tu cuenta de Wallbit quedó vinculada.`,
+      `${firstName ? `Listo ${firstName}` : "Listo"}, tu cuenta de Wallbit quedó vinculada.` +
+        (watching
+          ? "\n\n🔔 Voy a avisarte cuando entre plata para que no se quede quieta. " +
+            "Si te molesta, apagalas con /alertas."
+          : ""),
     );
 
     return done();

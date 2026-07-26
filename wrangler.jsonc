@@ -28,11 +28,9 @@
     }
   ],
 
-  // 21:00 UTC on weekdays, shortly after the US market close.
-  // Placeholder for the market sweep; currently only logs.
-  "triggers": {
-    "crons": ["0 21 * * 1-5"]
-  },
+  // No cron: each Session Durable Object schedules its own alarm to poll for
+  // incoming money. Durable Objects cannot be enumerated, so a central cron
+  // could never reach the users it would need to check.
 
   "observability": {
     "enabled": true

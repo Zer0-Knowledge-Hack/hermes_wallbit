@@ -95,11 +95,8 @@ export default {
     return new Response("ok");
   },
 
-  async scheduled(controller: ScheduledController, _env: Env, _ctx: ExecutionContext) {
-    // Placeholder for the market sweep: batch-fetch Alpaca, compute signals,
-    // then wake each user's Durable Object to deliver its own alert.
-    console.log("cron fired", controller.cron);
-  },
+  // No scheduled() handler: proactive checks live in each Session's own alarm.
+  // A central cron cannot find the users — Durable Objects cannot be enumerated.
 } satisfies ExportedHandler<Env>;
 
 /**
@@ -276,6 +273,28 @@ async function handleCallback(query: TelegramCallbackQuery, env: Env): Promise<v
     return;
   }
 
+  if (data === "checknow") {
+    await answerCallback(env.BOT_TOKEN, query.id, "Revisando...");
+
+    const detected = await session.checkForInflow();
+
+    await editMessage(
+      env.BOT_TOKEN,
+      chatId,
+      messageId,
+      detected === null
+        ? "🔔 <b>Alertas activadas</b>\n\nRevisé y no entró plata nueva desde la última vez. " +
+            "Te aviso apenas pase."
+        : `💸 <b>Te entraron $${detected.inflow.toFixed(2)}</b>\n\n` +
+            `Tenés <b>$${detected.balance.toFixed(2)}</b> sin invertir.`,
+      [
+        [{ text: "🔎 Ver opciones", callback_data: "cats" }],
+        [{ text: "💰 Ver mi cuenta", callback_data: "balance" }],
+      ],
+    );
+    return;
+  }
+
   if (data === "balance") {
     await answerCallback(env.BOT_TOKEN, query.id);
     const result = await accountSnapshot(apiKey);
@@ -331,9 +350,7 @@ async function handleUpdate(
 
   // Telegram identifies the sender on every single update, so the bot knows who
   // it is talking to without ever asking.
-  if (message.from?.first_name) {
-    await session.rememberName(message.from.first_name);
-  }
+  await session.rememberIdentity(chatId, message.from?.first_name);
 
   const profile = await session.profile();
   const name = profile.firstName ?? "";
@@ -480,6 +497,38 @@ async function handleUpdate(
         chatId,
         "🔎 <b>¿Dónde querés invertir?</b>\n\nElegí una categoría.",
         categoryKeyboard(),
+      );
+      return;
+    }
+
+    case "/alertas": {
+      if (!profile.linked) {
+        await sendMessage(env.BOT_TOKEN, chatId, "Vinculá tu cuenta primero con /vincular.");
+        return;
+      }
+
+      if (await session.watching()) {
+        await session.stopWatching();
+        await sendMessage(
+          env.BOT_TOKEN,
+          chatId,
+          "🔕 Listo, no te escribo más por mi cuenta.\n\n" +
+            "Volvé a activarlas con /alertas cuando quieras.",
+        );
+        return;
+      }
+
+      const started = await session.startWatching();
+      await sendMessage(
+        env.BOT_TOKEN,
+        chatId,
+        started
+          ? "🔔 <b>Alertas activadas</b>\n\n" +
+              "Voy a revisar tu cuenta cada 3 horas y te escribo cuando entre plata, " +
+              "para que no se quede quieta sin que te des cuenta.\n\n" +
+              "Con /alertas las apagás."
+          : "No pude leer tu cuenta para activar las alertas. Probá en un rato.",
+        started ? [[{ text: "🔍 Revisar ahora", callback_data: "checknow" }]] : undefined,
       );
       return;
     }
