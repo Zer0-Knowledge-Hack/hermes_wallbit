@@ -76,13 +76,29 @@ export default {
       return new Response("hermes-bot is running");
     }
 
+    // EVERY path below answers 200, on purpose.
+    //
+    // Telegram treats any non-2xx as a failed delivery and re-queues the update,
+    // retrying with backoff forever. A window of 403s — say, the deploy landing
+    // before the secret was set — builds a backlog that never drains and can
+    // leave the bot unresponsive long after the real problem is gone.
+    //
+    // Rejecting an update means not acting on it, not refusing the delivery.
+
     // Telegram echoes the secret configured with setWebhook. Without this check
     // anyone who discovers the Worker URL could inject fake updates.
     if (request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== env.WEBHOOK_SECRET) {
-      return new Response("forbidden", { status: 403 });
+      console.warn("rejected update: secret mismatch");
+      return new Response("ok");
     }
 
-    const update = (await request.json()) as TelegramUpdate;
+    let update: TelegramUpdate;
+    try {
+      update = (await request.json()) as TelegramUpdate;
+    } catch (error) {
+      console.error("rejected update: malformed body", error);
+      return new Response("ok");
+    }
 
     // Acknowledge immediately and finish the work in the background. If we held
     // the response open while the model runs, Telegram would time out, retry the
@@ -96,11 +112,8 @@ export default {
     return new Response("ok");
   },
 
-  async scheduled(controller: ScheduledController, _env: Env, _ctx: ExecutionContext) {
-    // Placeholder for the market sweep: batch-fetch Alpaca, compute signals,
-    // then wake each user's Durable Object to deliver its own alert.
-    console.log("cron fired", controller.cron);
-  },
+  // No scheduled() handler: proactive checks live in each Session's own alarm.
+  // A central cron cannot find the users — Durable Objects cannot be enumerated.
 } satisfies ExportedHandler<Env>;
 
 /**
@@ -277,6 +290,28 @@ async function handleCallback(query: TelegramCallbackQuery, env: Env): Promise<v
     return;
   }
 
+  if (data === "checknow") {
+    await answerCallback(env.BOT_TOKEN, query.id, "Revisando...");
+
+    const detected = await session.checkForInflow();
+
+    await editMessage(
+      env.BOT_TOKEN,
+      chatId,
+      messageId,
+      detected === null
+        ? "🔔 <b>Alertas activadas</b>\n\nRevisé y no entró plata nueva desde la última vez. " +
+        "Te aviso apenas pase."
+        : `💸 <b>Te entraron $${detected.inflow.toFixed(2)}</b>\n\n` +
+        `Tenés <b>$${detected.balance.toFixed(2)}</b> sin invertir.`,
+      [
+        [{ text: "🔎 Ver opciones", callback_data: "cats" }],
+        [{ text: "💰 Ver mi cuenta", callback_data: "balance" }],
+      ],
+    );
+    return;
+  }
+
   if (data === "balance") {
     await answerCallback(env.BOT_TOKEN, query.id);
     const result = await accountSnapshot(apiKey);
@@ -332,9 +367,7 @@ async function handleUpdate(
 
   // Telegram identifies the sender on every single update, so the bot knows who
   // it is talking to without ever asking.
-  if (message.from?.first_name) {
-    await session.rememberName(message.from.first_name);
-  }
+  await session.rememberIdentity(chatId, message.from?.first_name);
 
   const profile = await session.profile();
   const name = profile.firstName ?? "";
@@ -345,18 +378,18 @@ async function handleUpdate(
         env.BOT_TOKEN,
         chatId,
         `Hola${name ? ` ${name}` : ""}, soy Hermes.\n\n` +
-          `Te ayudo a decidir qué hacer con la plata que cobrás en Wallbit.\n\n` +
-          (profile.linked
-            ? "Tu cuenta ya está vinculada."
-            : "Para empezar, escribí /vincular y conectá tu cuenta de Wallbit.") +
-          "\n\nComandos:\n" +
-          "/saldo — tu saldo y tu cartera\n" +
-          "/invertir — explorar dónde invertir\n" +
-          "/notificar — probar envío de alerta proactiva vía Zavudev SDK\n" +
-          "/vincular — conectar tu cuenta de Wallbit\n" +
-          "/desvincular — que deje de tener acceso (la key sigue viva en Wallbit)\n" +
-          "/revocar — que Wallbit elimine la key definitivamente\n" +
-          "/reset — borrar nuestra conversación",
+        `Te ayudo a decidir qué hacer con la plata que cobrás en Wallbit.\n\n` +
+        (profile.linked
+          ? "Tu cuenta ya está vinculada."
+          : "Para empezar, escribí /vincular y conectá tu cuenta de Wallbit.") +
+        "\n\nComandos:\n" +
+        "/saldo — tu saldo y tu cartera\n" +
+        "/invertir — explorar dónde invertir\n" +
+        "/notificar — probar envío de alerta proactiva vía Zavudev SDK\n" +
+        "/vincular — conectar tu cuenta de Wallbit\n" +
+        "/desvincular — que deje de tener acceso (la key sigue viva en Wallbit)\n" +
+        "/revocar — que Wallbit elimine la key definitivamente\n" +
+        "/reset — borrar nuestra conversación",
       );
       return;
     }
@@ -368,7 +401,7 @@ async function handleUpdate(
         env.BOT_TOKEN,
         chatId,
         `Abrí este enlace para pegar tu API key de Wallbit:\n\n${link}\n\n` +
-          `Sirve una sola vez y vence en 10 minutos. No compartas el enlace con nadie.`,
+        `Sirve una sola vez y vence en 10 minutos. No compartas el enlace con nadie.`,
       );
       return;
     }
@@ -379,10 +412,10 @@ async function handleUpdate(
         env.BOT_TOKEN,
         chatId,
         "Borré tu API key de mis registros. Ya no tengo acceso a tu cuenta.\n\n" +
-          "Importante: eso la elimina de este servicio, pero la API key sigue " +
-          "existiendo y activa en Wallbit. Para revocarla del todo, borrala desde " +
-          "Wallbit → Settings → API Keys.\n\n" +
-          "También puedo revocarla por vos: /revocar",
+        "Importante: eso la elimina de este servicio, pero la API key sigue " +
+        "existiendo y activa en Wallbit. Para revocarla del todo, borrala desde " +
+        "Wallbit → Settings → API Keys.\n\n" +
+        "También puedo revocarla por vos: /revocar",
       );
       return;
     }
@@ -405,10 +438,10 @@ async function handleUpdate(
           env.BOT_TOKEN,
           chatId,
           "Esto le pide a Wallbit que elimine tu API key de forma definitiva, " +
-            "y además la borra de mis registros.\n\n" +
-            "No se puede deshacer: para volver a vincularte vas a tener que generar " +
-            "una key nueva en Wallbit.\n\n" +
-            "Si estás seguro, escribí:\n/revocar confirmar",
+          "y además la borra de mis registros.\n\n" +
+          "No se puede deshacer: para volver a vincularte vas a tener que generar " +
+          "una key nueva en Wallbit.\n\n" +
+          "Si estás seguro, escribí:\n/revocar confirmar",
         );
         return;
       }
@@ -429,7 +462,7 @@ async function handleUpdate(
         chatId,
         result.ok
           ? "Listo. Wallbit revocó la API key y la borré de mis registros. " +
-              "Ya no existe en ningún lado."
+          "Ya no existe en ningún lado."
           : REVOKE_FAILURE[result.reason],
       );
       return;
@@ -486,13 +519,45 @@ async function handleUpdate(
       return;
     }
 
+    case "/alertas": {
+      if (!profile.linked) {
+        await sendMessage(env.BOT_TOKEN, chatId, "Vinculá tu cuenta primero con /vincular.");
+        return;
+      }
+
+      if (await session.watching()) {
+        await session.stopWatching();
+        await sendMessage(
+          env.BOT_TOKEN,
+          chatId,
+          "🔕 Listo, no te escribo más por mi cuenta.\n\n" +
+          "Volvé a activarlas con /alertas cuando quieras.",
+        );
+        return;
+      }
+
+      const started = await session.startWatching();
+      await sendMessage(
+        env.BOT_TOKEN,
+        chatId,
+        started
+          ? "🔔 <b>Alertas activadas</b>\n\n" +
+          "Voy a revisar tu cuenta cada 3 horas y te escribo cuando entre plata, " +
+          "para que no se quede quieta sin que te des cuenta.\n\n" +
+          "Con /alertas las apagás."
+          : "No pude leer tu cuenta para activar las alertas. Probá en un rato.",
+        started ? [[{ text: "🔍 Revisar ahora", callback_data: "checknow" }]] : undefined,
+      );
+      return;
+    }
+
     case "/notificar": {
       await sendTyping(env.BOT_TOKEN, chatId);
       const customText = message.text.replace(/^\/notificar(\s+|$)/i, "").trim();
       const alertMessage = customText
         ? `🔔 <b>Alerta de Hermes (vía Zavudev SDK):</b>\n\n${escapeHtml(customText)}`
         : `🔔 <b>Alerta Proactiva de Hermes (vía Zavudev SDK):</b>\n\n` +
-          `¡La integración de Zavudev con Hermes Wallbit funciona correctamente para tu chat (${chatId})!`;
+        `¡La integración de Zavudev con Hermes Wallbit funciona correctamente para tu chat (${chatId})!`;
 
       const result = await sendZavudevAlert(
         env.ZAVUDEV_API_KEY,
@@ -666,9 +731,9 @@ function keyboardFor(usedTools: { name: string; output: unknown }[]): InlineKeyb
   if (search !== undefined) {
     const symbols = Array.isArray(search.output)
       ? (search.output as { symbol?: string }[])
-          .map((row) => row.symbol)
-          .filter((symbol): symbol is string => typeof symbol === "string")
-          .slice(0, 9)
+        .map((row) => row.symbol)
+        .filter((symbol): symbol is string => typeof symbol === "string")
+        .slice(0, 9)
       : [];
 
     return symbols.length > 0 ? assetKeyboard(symbols) : categoryKeyboard();
