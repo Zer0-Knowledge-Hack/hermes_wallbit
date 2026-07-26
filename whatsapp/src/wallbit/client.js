@@ -26,7 +26,23 @@ class WallbitClient {
         return url.toString();
     }
 
+    cleanKey(key) {
+        if (!key || typeof key !== "string") return "";
+        return key.replace(/[^\x21-\x7E]/g, "").trim();
+    }
+
     async request(apiKey, method, path, { query, body, retries = MAX_RETRIES } = {}) {
+        const cleanKey = this.cleanKey(apiKey);
+
+        if (!cleanKey) {
+            return {
+                ok: false,
+                status: 401,
+                message: "API Key vacía o con caracteres no válidos",
+                data: null,
+            };
+        }
+
         const url = this.buildUrl(path, query);
         let attempt = 0;
 
@@ -35,7 +51,7 @@ class WallbitClient {
                 const response = await fetch(url, {
                     method,
                     headers: {
-                        "X-API-Key": apiKey,
+                        "X-API-Key": cleanKey,
                         Accept: "application/json",
                         ...(body ? { "Content-Type": "application/json" } : {}),
                     },

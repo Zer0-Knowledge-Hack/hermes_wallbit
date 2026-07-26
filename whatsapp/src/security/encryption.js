@@ -10,10 +10,15 @@ const SALT_LENGTH = 16;
  * Deriva una clave de 32 bytes usando HKDF-SHA256
  */
 export function deriveKey(salt, info = "wallbit-credentials") {
-    const masterKey = Buffer.from(config.encryptionKey, "hex");
+    let masterKey;
+    const rawKey = config.encryptionKey?.trim();
 
-    if (masterKey.length !== 32) {
-        throw new Error("ENCRYPTION_KEY debe ser una cadena hex de 64 caracteres (32 bytes)");
+    if (rawKey && /^[0-9a-fA-F]{64}$/.test(rawKey)) {
+        masterKey = Buffer.from(rawKey, "hex");
+    } else if (rawKey) {
+        masterKey = crypto.createHash("sha256").update(rawKey).digest();
+    } else {
+        masterKey = crypto.createHash("sha256").update(config.jwtSecret || "default-wallbit-key").digest();
     }
 
     return crypto.hkdfSync("sha256", masterKey, salt, info, 32);
