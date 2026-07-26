@@ -103,8 +103,10 @@ const FUNCTIONS: FunctionSpec[] = [
   {
     name: "get_trade_fees",
     description:
-      "Devuelve la comisión de trading que le corresponde al usuario según su plan: " +
-      "porcentaje y costo fijo. Usalo cuando pregunta cuánto le cuesta operar.",
+      "Devuelve la comisión de trading EXACTA que le corresponde al usuario según " +
+      "su plan: porcentaje y costo fijo. Llamalo SIEMPRE que se hable de comisiones, " +
+      "costos de operar o cuánto se descuenta. Nunca estimes una comisión: este dato " +
+      "es exacto y viene de Wallbit.",
     parameters: { type: "object", properties: {}, required: [] },
   },
   {
@@ -328,7 +330,12 @@ export async function runTool(
         return { error: "no_price", symbol };
       }
 
-      const fees = feesResult.ok ? feesResult.data?.data : undefined;
+      // Same empty-array case as get_trade_fees: `data` is [] when no fee
+      // configuration matches, and treating that as an object silently yields a
+      // zero fee — a plan that understates what the trade actually costs.
+      const rawFees = feesResult.ok ? feesResult.data?.data : undefined;
+      const fees = rawFees !== undefined && !Array.isArray(rawFees) ? rawFees : undefined;
+      const feeKnown = fees !== undefined;
       const percentageFee = Number(fees?.percentage_fee ?? 0);
       const fixedFee = Number(fees?.fixed_fee_usd ?? 0);
       const fee = Number(((amount * percentageFee) / 100 + fixedFee).toFixed(2));
@@ -343,13 +350,17 @@ export async function runTool(
         name: asset.name,
         price_now: asset.price,
         amount_usd: amount,
-        fee_usd: fee,
-        fee_breakdown: `${percentageFee}% + $${fixedFee}`,
+        fee_usd: feeKnown ? fee : null,
+        fee_breakdown: feeKnown
+          ? `${percentageFee}% + $${fixedFee}`
+          : "no disponible — Wallbit no devolvió la comisión de esta cuenta",
         invested_usd: invested,
         approx_shares: Number((invested / asset.price).toFixed(4)),
         available_usd: usdBalance,
         enough_balance: usdBalance >= amount,
-        note: "Cálculo al precio de ahora. No es una orden; el usuario la confirma en la app de Wallbit.",
+        note: feeKnown
+          ? "Cálculo al precio de ahora. No es una orden; la confirma el usuario."
+          : "Cálculo al precio de ahora, SIN comisión porque Wallbit no la devolvió. Aclaralo; no inventes un porcentaje.",
       };
     }
 
@@ -375,8 +386,34 @@ export async function runTool(
       }));
     }
 
-    case "get_trade_fees":
-      return unwrap(await getTradeFees(apiKey));
+    case "get_trade_fees": {
+      const result = await getTradeFees(apiKey);
+      if (!result.ok) return unwrap(result);
+
+      const fees = result.data?.data;
+
+      // Wallbit answers `data: []` — an empty ARRAY, not an object — when no fee
+      // configuration matches the account. Left unhandled the model saw nothing
+      // usable and quietly estimated instead of saying it did not know.
+      if (fees === undefined || Array.isArray(fees)) {
+        return {
+          error: "no_fee_config",
+          note: "Wallbit no devolvió configuración de comisiones para esta cuenta. Decí que no pudiste consultarla; NO estimes ni inventes un porcentaje.",
+        };
+      }
+
+      const percentage = Number(fees.percentage_fee ?? 0);
+      const fixed = Number(fees.fixed_fee_usd ?? 0);
+
+      return {
+        tier: fees.tier ?? null,
+        percentage_fee: percentage,
+        fixed_fee_usd: fixed,
+        // Pre-phrased so the model states it instead of paraphrasing it wrong.
+        summary: `${percentage}% del monto${fixed > 0 ? ` + $${fixed.toFixed(2)} fijos` : ", sin costo fijo"}`,
+        example_on_100_usd: Number(((100 * percentage) / 100 + fixed).toFixed(2)),
+      };
+    }
 
     case "get_rate": {
       const source = str(args, "source_currency");

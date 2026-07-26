@@ -845,8 +845,14 @@ function tradeReceiptCard(
   return lines.join("\n");
 }
 
-/** A price the model wrote without ever calling a tool. */
-const PRICE_PATTERN = /\$\s?\d/;
+/**
+ * A figure the model wrote without ever calling a tool.
+ *
+ * Percentages count. Fees are quoted as percentages, so a pattern that only
+ * caught `$` let invented commissions straight through — which is exactly how
+ * the bot ended up "estimating" a fee the API returns exactly.
+ */
+const PRICE_PATTERN = /\$\s?\d|\d\s?%/;
 
 /**
  * The model will happily quote prices from its training data. In one test it
