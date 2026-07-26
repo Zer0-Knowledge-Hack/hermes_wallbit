@@ -3,6 +3,10 @@ import "../styles/global.css";
 
 const botUrl = import.meta.env.PUBLIC_BOT_URL ?? "https://t.me/hermes_wallbit_bot";
 
+// A Short embeds like any other video once you use the plain video id.
+const demoId = "1tpZbPSa8DY";
+const demoUrl = `https://youtube.com/shorts/${demoId}`;
+
 const steps = [
   {
     n: "01",
@@ -95,6 +99,7 @@ const security = [
       content="Cobrás del exterior en Wallbit. Hermes te avisa cuando entra plata y te acompaña a invertirla, desde Telegram."
     />
     <meta property="og:type" content="website" />
+    <meta property="og:video" content={demoUrl} />
     <meta name="theme-color" content="#f7f4f0" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#17151a" media="(prefers-color-scheme: dark)" />
     <script is:inline>
@@ -141,8 +146,9 @@ const security = [
           </p>
           <div class="actions">
             <a class="cta" href={botUrl}>Abrir en Telegram →</a>
-            <span class="cta-sub">Gratis · con tu propia API key</span>
+            <a class="cta-ghost" href="#demo">▶ Ver la demo</a>
           </div>
+          <p class="cta-sub" style="margin-top: 16px;">Gratis · con tu propia API key</p>
         </div>
 
         <div class="phone" aria-label="Conversación de ejemplo con Hermes">
@@ -190,6 +196,36 @@ const security = [
           <div class="ledger-row"><span>Día 11</span><span class="idle">Sin mover</span></div>
           <div class="ledger-row"><span>Día 26</span><span class="idle">Sin mover</span></div>
           <div class="ledger-row"><span>Próximo pago</span><b>$500.00</b></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Demo -->
+    <section class="demo" id="demo">
+      <div class="wrap demo-grid reveal">
+        <div>
+          <span class="label">La demo</span>
+          <h2 style="margin: 20px 0 22px;">Vas a verlo funcionando.</h2>
+          <p>
+            Una conversación real en Telegram: Hermes lee la cuenta, muestra
+            instrumentos con su precio de hoy, calcula cuánto se lleva la comisión y
+            deja la compra lista para confirmar con un botón.
+          </p>
+          <a class="cta-ghost" href={demoUrl} target="_blank" rel="noopener">
+            Abrir en YouTube →
+          </a>
+        </div>
+
+        <div class="demo-phone">
+          <div class="demo-frame">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${demoId}`}
+              title="Demo de Hermes en Telegram"
+              loading="lazy"
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+            ></iframe>
+          </div>
         </div>
       </div>
     </section>
