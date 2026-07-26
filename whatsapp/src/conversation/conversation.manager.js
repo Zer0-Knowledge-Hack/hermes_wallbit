@@ -4,6 +4,7 @@ import wallbit from "../wallbit/wallbit.js";
 import { findCommand } from "../commands/index.js";
 import auditService from "../services/audit.service.js";
 import messageService from "../services/message.service.js";
+import aiService from "../services/ai.service.js";
 import { getIo } from "../socket/index.js";
 import { normalizeJid } from "../utils/phone.js";
 
@@ -64,7 +65,7 @@ class ConversationManager {
 
         // Explicit connect trigger
         if (
-            ["conectar", "connect", "config", "configurar"].includes(lower) &&
+            ["conectar", "connect", "config", "configurar", "vincular"].includes(lower) &&
             !sessionManager.hasApiKey(normalizedJid)
         ) {
             return this.startConnectFlow(sock, normalizedJid);
@@ -85,15 +86,11 @@ class ConversationManager {
 
         // Unconnected user — guide to connect
         if (!sessionManager.hasApiKey(normalizedJid)) {
-            await this.reply(sock, normalizedJid, "👋 Escribe *conectar* para vincular tu cuenta Wallbit.");
+            await this.reply(sock, normalizedJid, "👋 Escribe *vincular* (o *conectar*) para conectar tu cuenta Wallbit.");
             return;
         }
 
-        await this.reply(
-            sock,
-            normalizedJid,
-            "No entendí ese mensaje. Escribe *balance*, *portfolio*, *assets*, *wallet*, *invest* o *help*."
-        );
+        return this.handleWithAi(sock, normalizedJid, trimmed);
     }
 
     async sendWelcome(sock, jid) {
@@ -345,6 +342,52 @@ ${plan.side.toUpperCase()} *${plan.symbol}* — $${plan.amount.toFixed(2)} USD`
         await this.reply(sock, jid, "📈 *Invertir*\n\n¿En qué activo deseas invertir? (ej: AAPL, SPY)");
 
         this.emitSessionUpdate(jid, { event: "trade:awaiting_symbol" });
+    }
+
+    async handleWithAi(sock, jid, text) {
+        const { ok, apiKey } = sessionManager.requireApiKey(jid);
+        if (!ok) {
+            await this.reply(sock, jid, "👋 Escribe *vincular* (o *conectar*) para vincular tu cuenta Wallbit.");
+            return;
+        }
+
+        const session = sessionManager.get(jid);
+        const history = session?.conversation || [];
+
+        await sock.sendMessage(jid, { text: "⏳ *Consultando con inteligencia artificial...*" });
+
+        const res = await aiService.chat(jid, apiKey, text, history);
+
+        await this.reply(sock, jid, res.text);
+
+        const plan = res.usedTools?.find((tool) => tool.name === "plan_investment");
+        if (plan && plan.output) {
+            const output = plan.output;
+            if (
+                typeof output.symbol === "string" &&
+                typeof output.amount_usd === "number" &&
+                output.enough_balance !== false
+            ) {
+                const tradePlan = {
+                    symbol: output.symbol,
+                    amount: output.amount_usd,
+                    side: "buy",
+                    currency: "USD",
+                };
+
+                sessionManager.stageTrade(jid, tradePlan);
+                sessionManager.updateState(jid, SessionState.WAITING_CONFIRMATION);
+
+                await this.reply(
+                    sock,
+                    jid,
+                    `📋 *Confirmar operación propuesta por IA*\n\nCompra: *${tradePlan.symbol}*\nMonto: *$${tradePlan.amount.toFixed(2)} USD*\nPrecio aprox.: *$${output.price_now || 0} USD*\n\nResponde *SI* para ejecutar o *NO* para cancelar.`
+                );
+
+                this.emitSessionUpdate(jid, { event: "trade:pending", pendingTrade: tradePlan });
+                getIo()?.emit("trade:pending", { jid, pendingTrade: tradePlan });
+            }
+        }
     }
 
     async reply(sock, jid, text) {

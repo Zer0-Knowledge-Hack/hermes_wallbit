@@ -10,6 +10,9 @@ import configCommand from "./config.command.js";
 import disconnectCommand from "./disconnect.command.js";
 import helpCommand from "./help.command.js";
 import tradeCommand from "./trade.command.js";
+import revokeCommand from "./revoke.command.js";
+import resetCommand from "./reset.command.js";
+import notificarCommand from "./notificar.command.js";
 
 export const commands = [
     menuCommand,
@@ -24,6 +27,9 @@ export const commands = [
     disconnectCommand,
     helpCommand,
     tradeCommand,
+    revokeCommand,
+    resetCommand,
+    notificarCommand,
 ];
 
 export function findCommand(text) {

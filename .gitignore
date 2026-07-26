@@ -5,3 +5,6 @@ node_modules/
 .atl/
 landing/dist/
 landing/.astro/
+
+/whatsapp/data/
+/whatsapp/auth/

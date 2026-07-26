@@ -5,7 +5,7 @@ import conversationManager from "../conversation/conversation.manager.js";
 
 class ConfigCommand extends BaseCommand {
     constructor() {
-        super("config", "Reconfigurar API Key", ["conectar", "connect", "configurar"]);
+        super("config", "Reconfigurar API Key", ["conectar", "connect", "configurar", "vincular", "/vincular"]);
     }
 
     async execute({ sock, from, jid }) {

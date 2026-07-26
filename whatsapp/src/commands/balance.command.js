@@ -6,7 +6,7 @@ import { getIo } from "../socket/index.js";
 
 class BalanceCommand extends BaseCommand {
     constructor() {
-        super("balance", "Consultar saldo checking");
+        super("balance", "Consultar saldo checking", ["saldo", "/saldo", "/balance"]);
     }
 
     async execute({ sock, from, jid }) {

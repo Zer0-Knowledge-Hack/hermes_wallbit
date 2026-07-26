@@ -5,7 +5,7 @@ import aiService from "../services/ai.service.js";
 
 class AssetsCommand extends BaseCommand {
     constructor() {
-        super("assets", "Listar activos disponibles", ["asset", "activos"]);
+        super("assets", "Listar activos disponibles", ["asset", "activos", "invertir", "/invertir", "invest"]);
     }
 
     async execute({ sock, from, jid, text }) {

@@ -5,7 +5,7 @@ import { formatRelativeTime } from "../utils/format.js";
 
 class StatusCommand extends BaseCommand {
     constructor() {
-        super("status", "Estado de la cuenta", ["estado"]);
+        super("status", "Estado de la cuenta", ["estado", "whatshat", "/whatshat", "whatsapp", "/whatsapp"]);
     }
 
     async execute({ sock, from, jid }) {

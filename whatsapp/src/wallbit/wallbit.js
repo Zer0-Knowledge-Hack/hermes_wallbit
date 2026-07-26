@@ -58,7 +58,7 @@ class Wallbit {
     }
 
     revokeApiKey(apiKey) {
-        return client.post(apiKey, "/api-key/revoke");
+        return client.delete(apiKey, "/api-key");
     }
 }
 

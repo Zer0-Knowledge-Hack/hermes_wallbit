@@ -25,20 +25,17 @@ Escribe *conectar* para comenzar.`,
             text:
 `🤖 *Wallbit WhatsApp Assistant*
 
-Comandos disponibles:
+Comandos en español:
+• *saldo* — Tu saldo y cartera de inversión
+• *invertir* — Explorar e invertir (con confirmación)
+• *notificar* — Probar alerta proactiva (Zavudev SDK)
+• *whatshat* — Estado del túnel y bot de WhatsApp
+• *vincular* — Conectar tu cuenta de Wallbit
+• *desvincular* — Desconectar de este chat
+• *revocar* — Eliminar API Key definitivamente en Wallbit
+• *reset* — Borrar historial de nuestra conversación
 
-• *balance* — Saldo checking
-• *portfolio* — Portafolio de inversión
-• *transactions* — Historial de transacciones
-• *assets* — Listar activos
-• *asset SYMBOL* — Detalle de un activo
-• *wallet* — Direcciones crypto
-• *account* — Datos bancarios
-• *invest* — Invertir (con confirmación)
-• *status* — Estado de tu cuenta
-• *config* — Reconfigurar API Key
-• *disconnect* — Desconectar Wallbit
-• *help* — Ayuda completa`,
+💡 _También puedes usar comandos en inglés o preguntarme lo que quieras en lenguaje natural._`,
         });
     }
 }

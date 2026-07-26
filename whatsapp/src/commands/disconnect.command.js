@@ -5,7 +5,7 @@ import { getIo } from "../socket/index.js";
 
 class DisconnectCommand extends BaseCommand {
     constructor() {
-        super("disconnect", "Desconectar cuenta Wallbit", ["desconectar"]);
+        super("disconnect", "Desconectar cuenta Wallbit", ["desconectar", "desvincular", "/desvincular"]);
     }
 
     async execute({ sock, from, jid }) {

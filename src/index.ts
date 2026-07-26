@@ -1,7 +1,7 @@
 import { reply, type AccountContext, type ReplyResult } from "./ai";
 import type { Env } from "./env";
 import { buildToken, handleLink } from "./link";
-import type { Session } from "./session";
+import type { Session, Profile, Turn } from "./session";
 import {
   answerCallback,
   editMessage,
@@ -65,12 +65,71 @@ const REVOKE_FAILURE: Record<WallbitFailure, string> = {
     "Probá de nuevo en un rato.",
 };
 
+async function handleWhatsAppAi(request: Request, env: Env): Promise<Response> {
+  const authHeader =
+    request.headers.get("X-Webhook-Secret") ??
+    request.headers.get("X-Telegram-Bot-Api-Secret-Token");
+  if (authHeader !== env.WEBHOOK_SECRET) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
+  }
+
+  let body: {
+    jid?: string;
+    apiKey?: string;
+    text?: string;
+    history?: Turn[];
+  };
+
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return new Response(JSON.stringify({ error: "malformed_body" }), { status: 400 });
+  }
+
+  if (!body.text || !body.jid) {
+    return new Response(JSON.stringify({ error: "missing_fields" }), { status: 400 });
+  }
+
+  const profile: Profile = {
+    firstName: null,
+    linked: Boolean(body.apiKey),
+  };
+
+  let context: AccountContext = { state: "unlinked" };
+  if (body.apiKey) {
+    const res = await accountSnapshot(body.apiKey);
+    if (res.ok) {
+      context = { state: "ready", snapshot: res.data, apiKey: body.apiKey };
+    } else {
+      context = { state: "unavailable" };
+    }
+  }
+
+  const history = Array.isArray(body.history) ? body.history : [];
+  const answer = await reply(env, profile, context, history, body.text);
+  const guarded = guardAgainstInventedFigures(answer, profile.linked);
+
+  return new Response(
+    JSON.stringify({
+      text: guarded.text,
+      usedTools: answer.usedTools,
+    }),
+    {
+      headers: { "Content-Type": "application/json" },
+    },
+  );
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     if (url.pathname === "/link") {
       return handleLink(request, env);
+    }
+
+    if (url.pathname === "/api/whatsapp/ai" && request.method === "POST") {
+      return handleWhatsAppAi(request, env);
     }
 
     if (request.method !== "POST") {

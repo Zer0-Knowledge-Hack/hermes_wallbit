@@ -1,11 +1,68 @@
+import config from "../config/env.js";
+import logger from "../utils/logger.js";
+
 /**
- * Capa de IA desacoplada — preparada para integrar OpenAI/Anthropic/etc.
- * Solo ofrece análisis e información. Nunca ejecuta operaciones financieras.
+ * Capa de IA desacoplada — conectada a nuestro Cloudflare Worker para
+ * Function Calling con el modelo qwen3-30b y la API real de Wallbit.
  */
 class AIService {
+    async chat(jid, apiKey, text, history = []) {
+        if (!config.workerUrl) {
+            return {
+                ok: false,
+                text: "El agente de IA no está configurado (falta WORKER_URL). Puedes utilizar los comandos directos como *saldo*, *invertir* o *menu*.",
+                usedTools: [],
+            };
+        }
+
+        try {
+            const formattedHistory = history.map((msg) => ({
+                role: msg.role === "assistant" ? "assistant" : "user",
+                content: msg.content,
+            }));
+
+            const response = await fetch(`${config.workerUrl}/api/whatsapp/ai`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Webhook-Secret": config.webhookSecret || "",
+                },
+                body: JSON.stringify({
+                    jid,
+                    apiKey,
+                    text,
+                    history: formattedHistory,
+                }),
+            });
+
+            if (!response.ok) {
+                logger.error({ status: response.status }, "Error en consulta a IA Worker");
+                return {
+                    ok: false,
+                    text: "Tuve problemas para consultar al asistente conversacional en este momento. Puedes usar los comandos directos como *saldo*, *invertir* o *menu*.",
+                    usedTools: [],
+                };
+            }
+
+            const data = await response.json();
+            return {
+                ok: true,
+                text: data.text || "No obtuve respuesta del asistente.",
+                usedTools: Array.isArray(data.usedTools) ? data.usedTools : [],
+            };
+        } catch (error) {
+            logger.error({ err: error.message }, "Fallo de conexión con IA Worker");
+            return {
+                ok: false,
+                text: "No pude comunicarme con el servidor de inteligencia artificial. Inténtalo de nuevo más tarde o usa *menu*.",
+                usedTools: [],
+            };
+        }
+    }
+
     async analyzePortfolio(portfolioData) {
         if (!portfolioData) {
-            return "No tengo datos de portafolio para analizar. Conecta tu cuenta Wallbit primero.";
+            return "No tengo datos de portafolio para analizar. Conecta tu cuenta Wallbit primero con *vincular*.";
         }
 
         const positions = portfolioData?.data?.assets || portfolioData?.assets || [];
@@ -53,7 +110,7 @@ class AIService {
             return `Hoy tienes ${txs.length} transacción(es) registrada(s). Usa el comando *transactions* para ver el detalle.`;
         }
 
-        return "Soy tu asistente financiero informativo. Puedo explicar activos, analizar tu portafolio y responder preguntas generales. No ejecuto operaciones automáticamente.\n\nPrueba: *portfolio*, *asset AAPL*, o pregúntame sobre tu cartera.";
+        return "Soy tu asistente financiero de Wallbit. Puedo explicar activos, analizar tu cartera o ayudarte a invertir.\n\nPrueba escribir: *saldo*, *invertir*, o hazme una consulta en lenguaje natural.";
     }
 }
 

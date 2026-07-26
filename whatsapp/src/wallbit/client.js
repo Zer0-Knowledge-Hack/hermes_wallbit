@@ -112,6 +112,10 @@ class WallbitClient {
     post(apiKey, path, body) {
         return this.request(apiKey, "POST", path, { body });
     }
+
+    delete(apiKey, path) {
+        return this.request(apiKey, "DELETE", path);
+    }
 }
 
 export default new WallbitClient();

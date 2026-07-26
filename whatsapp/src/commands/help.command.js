@@ -12,27 +12,26 @@ class HelpCommand extends BaseCommand {
             text:
 `📚 *Ayuda — Wallbit WhatsApp Assistant*
 
-*Onboarding:*
-• conectar — Vincular tu API Key de Wallbit (X-API-Key)
+*Comandos en español (y alias en inglés):*
 
-*Finanzas:*
-• balance — Saldo checking
-• portfolio — Portafolio de inversión
-• transactions [filtro] — Transacciones
-• assets — Listar activos
-• asset SYMBOL — Detalle de activo
-• wallet — Direcciones crypto
-• account — Datos bancarios ACH/SEPA
-• invest — Comprar activos (requiere confirmación SI/NO)
+• *vincular* (o *conectar*, *config*) — Conectar tu cuenta Wallbit (API Key)
+• *saldo* (o *balance*, *portfolio*) — Ver saldo en checking y posiciones en bolsa
+• *invertir* (o *assets*, *invest*) — Consultar catálogo de inversión y crear órdenes
+• *notificar* (o *notify*) — Enviar mensaje proactivo de prueba (Zavudev SDK)
+• *whatshat* (o *whatsapp*, *status*) — Consultar estado del túnel local y servidor
+• *desvincular* (o *desconectar*, *disconnect*) — Quitar acceso en WhatsApp (key intacta en Wallbit)
+• *revocar* (o *revoke*) — Eliminar API Key definitivamente desde los servidores de Wallbit
+• *reset* (o *reiniciar*) — Reiniciar el historial de nuestra conversación
+• *menu* (o *inicio*, *start*) — Ver menú principal
+• *help* (o *ayuda*, *?*) — Esta ayuda completa
 
-*Cuenta:*
-• menu — Menú principal
-• status — Estado de conexión
-• config — Reconfigurar API Key
-• disconnect — Desconectar Wallbit
-• help — Esta ayuda
+*Comandos financieros adicionales (en inglés):*
+• *transactions* [filtro] — Historial de transacciones
+• *wallet* — Direcciones crypto
+• *account* — Datos bancarios ACH/SEPA
+• *asset SYMBOL* — Detalle de un activo
 
-⚠️ Las operaciones financieras requieren confirmación explícita.
+⚠️ Las operaciones financieras requieren confirmación explícita escribiendo SI.
 Nunca compartas tu API Key con terceros.`,
         });
     }
