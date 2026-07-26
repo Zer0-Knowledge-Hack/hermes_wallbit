@@ -88,6 +88,11 @@ if [ -n "${ZAVUDEV_API_KEY:-}" ]; then
   zavu_command='{"command":"notificar","description":"Probar alerta proactiva via Zavu"},'
 fi
 
+whatshat_command=""
+if [ -n "${WHATSAPP_API_URL:-}" ]; then
+  whatshat_command='{"command":"whatshat","description":"Estado del túnel y bot de WhatsApp"},'
+fi
+
 echo "==> Menú de comandos"
 curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setMyCommands" \
   -H 'content-type: application/json' \
@@ -96,6 +101,7 @@ curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setMyCommands" \
     {\"command\":\"invertir\",\"description\":\"Explorar donde invertir\"},
     {\"command\":\"alertas\",\"description\":\"Avisarme cuando entre plata\"},
     ${zavu_command}
+    ${whatshat_command}
     {\"command\":\"vincular\",\"description\":\"Conectar tu cuenta de Wallbit\"},
     {\"command\":\"desvincular\",\"description\":\"Quitar el acceso a tu cuenta\"},
     {\"command\":\"revocar\",\"description\":\"Eliminar la API key en Wallbit\"},

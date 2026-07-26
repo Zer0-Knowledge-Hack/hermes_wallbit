@@ -11,6 +11,8 @@ import {
   listWallets,
   type WallbitResult,
 } from "./wallbit";
+import type { Env } from "./env";
+import { getWhatsAppConnectionInfo, getWhatsAppStatus } from "./whatsapp-client";
 
 interface FunctionSpec {
   name: string;
@@ -144,6 +146,12 @@ const FUNCTIONS: FunctionSpec[] = [
     description: "Lista las tarjetas del usuario y su estado (activa o suspendida).",
     parameters: { type: "object", properties: {}, required: [] },
   },
+  {
+    name: "get_whatsapp_status",
+    description:
+      "Devuelve el estado de conexión del bot local de WhatsApp (/whatshat) a través del túnel HTTPS: si está conectado, el número vinculado y el tiempo de actividad. Usalo cuando el usuario pregunte por el bot de WhatsApp, si está activo, o si el túnel está funcionando.",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
 ];
 
 /**
@@ -166,10 +174,16 @@ function unwrap<T>(result: WallbitResult<T>): unknown {
   return { error: result.reason, status: result.status };
 }
 
+function unwrapWhatsApp<T>(result: { ok: boolean; data?: T; error?: string }): unknown {
+  if (result.ok) return result.data;
+  return { error: result.error };
+}
+
 export async function runTool(
   apiKey: string,
   name: string,
   args: Args,
+  env?: Env,
 ): Promise<unknown> {
   switch (name) {
     case "search_assets": {
@@ -299,6 +313,18 @@ export async function runTool(
 
     case "list_cards":
       return unwrap(await listCards(apiKey));
+
+    case "get_whatsapp_status": {
+      const [conn, status] = await Promise.all([
+        getWhatsAppConnectionInfo(env?.WHATSAPP_API_URL),
+        getWhatsAppStatus(env?.WHATSAPP_API_URL),
+      ]);
+      return {
+        connection: unwrapWhatsApp(conn),
+        server_status: unwrapWhatsApp(status),
+        tunnel_url: env?.WHATSAPP_API_URL || "not_configured",
+      };
+    }
 
     default:
       return { error: "unknown_tool", name };

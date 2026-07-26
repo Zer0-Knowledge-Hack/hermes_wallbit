@@ -13,4 +13,6 @@ export interface Env {
   ENCRYPTION_KEY: string;
   /** API key for Zavudev SDK (@zavudev/sdk) to send messages across channels. */
   ZAVUDEV_API_KEY?: string;
+  /** HTTPS tunnel URL for the local WhatsApp assistant (/whatsapp project). */
+  WHATSAPP_API_URL?: string;
 }

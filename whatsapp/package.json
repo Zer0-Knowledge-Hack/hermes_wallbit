@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "tunnel": "node src/utils/tunnel.js",
+    "dev:tunnel": "node src/utils/tunnel.js --start"
   },
   "keywords": ["whatsapp", "wallbit", "baileys", "crm"],
   "author": "",

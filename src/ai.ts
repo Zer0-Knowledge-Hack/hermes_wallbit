@@ -253,7 +253,7 @@ export async function reply(
       }
 
       for (const call of calls) {
-        const output = await runTool(context.apiKey, call.name, call.args);
+        const output = await runTool(context.apiKey, call.name, call.args, env);
         usedTools.push({ name: call.name, args: call.args, output });
 
         messages.push({

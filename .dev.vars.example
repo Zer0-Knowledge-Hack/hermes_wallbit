@@ -21,3 +21,6 @@ WORKER_URL=https://hermes-bot.YOUR-SUBDOMAIN.workers.dev
 
 # API key for Zavudev SDK (@zavudev/sdk) to send messages across channels.
 ZAVUDEV_API_KEY=
+
+# URL pública del túnel HTTPS para el bot local de WhatsApp (generada con npm run tunnel en /whatsapp)
+WHATSAPP_API_URL=https://tu-tunel.trycloudflare.com

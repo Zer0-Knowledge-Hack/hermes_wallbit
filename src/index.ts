@@ -31,6 +31,7 @@ import {
   type WallbitFailure,
 } from "./wallbit";
 import { sendZavudevAlert } from "./zavudev";
+import { getWhatsAppConnectionInfo, getWhatsAppStatus } from "./whatsapp-client";
 
 /** How long an account snapshot stays fresh before we ask Wallbit again. */
 const SNAPSHOT_TTL_MS = 60_000;
@@ -386,6 +387,7 @@ async function handleUpdate(
         "/saldo — tu saldo y tu cartera\n" +
         "/invertir — explorar dónde invertir\n" +
         "/notificar — probar envío de alerta proactiva vía Zavudev SDK\n" +
+        "/whatshat — estado del túnel y bot de WhatsApp\n" +
         "/vincular — conectar tu cuenta de Wallbit\n" +
         "/desvincular — que deje de tener acceso (la key sigue viva en Wallbit)\n" +
         "/revocar — que Wallbit elimine la key definitivamente\n" +
@@ -582,6 +584,53 @@ async function handleUpdate(
         result.ok
           ? `✅ <b>Notificación proactiva enviada vía Zavudev.</b>\n\nID del mensaje: <code>${result.messageId}</code>\n<i>Deberías recibir el mensaje proactivo en este chat en breves instantes.</i>`
           : `❌ <b>Fallo al notificar por Zavudev:</b>\n\n${escapeHtml(result.error ?? "Error desconocido")}`,
+      );
+      return;
+    }
+
+    case "/whatshat":
+    case "/whatsapp": {
+      await sendTyping(env.BOT_TOKEN, chatId);
+      const [connRes, statusRes] = await Promise.all([
+        getWhatsAppConnectionInfo(env.WHATSAPP_API_URL),
+        getWhatsAppStatus(env.WHATSAPP_API_URL),
+      ]);
+
+      if (!connRes.ok && !statusRes.ok) {
+        await sendMessage(
+          env.BOT_TOKEN,
+          chatId,
+          `❌ <b>Fallo al conectar con el túnel del bot de WhatsApp:</b>\n\n` +
+            `• <b>Error:</b> ${escapeHtml(connRes.error || statusRes.error || "Sin respuesta")}\n\n` +
+            `<i>Asegúrate de ejecutar <code>npm run dev:tunnel</code> en la carpeta /whatsapp para activar el túnel HTTPS.</i>`,
+        );
+        return;
+      }
+
+      const conn = connRes.ok ? connRes.data : undefined;
+      const stats = statusRes.ok ? statusRes.data : undefined;
+      const statusIcon = conn?.status === "connected" ? "🟢" : conn?.status === "qr" ? "🟡" : "🔴";
+      const statusText =
+        conn?.status === "connected"
+          ? "Conectado"
+          : conn?.status === "qr"
+            ? "Esperando escaneo de QR"
+            : "Desconectado";
+      const phone = conn?.phone ? `+${escapeHtml(conn.phone)}` : "No vinculado";
+      const wName = conn?.name ? escapeHtml(conn.name) : "Sin nombre";
+      const uptimeSec = stats?.uptime ?? 0;
+      const uptimeMin = Math.floor(uptimeSec / 60);
+
+      await sendMessage(
+        env.BOT_TOKEN,
+        chatId,
+        `📱 <b>Estado de WhatsApp (/whatshat):</b>\n\n` +
+          `• <b>Estado:</b> ${statusIcon} <b>${statusText}</b>\n` +
+          `• <b>Número:</b> <code>${phone}</code> (${wName})\n` +
+          `• <b>Túnel HTTPS:</b> 🟢 Activo\n` +
+          `• <b>URL Túnel:</b> <code>${escapeHtml(env.WHATSAPP_API_URL || "")}</code>\n` +
+          `• <b>Uptime Bot:</b> ${uptimeMin} min\n` +
+          `• <b>Mensajes Procesados:</b> ${stats?.messagesProcessed ?? 0}`,
       );
       return;
     }
