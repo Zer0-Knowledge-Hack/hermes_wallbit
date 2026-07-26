@@ -44,6 +44,11 @@ export function registerSocketHandlers(io) {
             const { restartBot } = await import("../whatsapp/connection.js");
             await restartBot();
         });
+
+        socket.on("whatsapp:reset_session", async () => {
+            const { resetSessionData } = await import("../whatsapp/connection.js");
+            await resetSessionData();
+        });
     });
 }
 

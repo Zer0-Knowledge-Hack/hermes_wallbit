@@ -241,7 +241,15 @@ function renderTable(headers, rows) {
 }
 
 document.getElementById("btnRestart")?.addEventListener("click", () => {
-  socket.emit("whatsapp:restart");
+  if (confirm("¿Estás seguro de querer reiniciar el servicio de WhatsApp?")) {
+    socket.emit("whatsapp:restart");
+  }
+});
+
+document.getElementById("btnResetSession")?.addEventListener("click", () => {
+  if (confirm("⚠️ ¿Estás seguro de querer borrar todos los datos de sesión (/auth y /data)? Esto cerrará tu sesión actual y requerirá escanear el QR nuevamente.")) {
+    socket.emit("whatsapp:reset_session");
+  }
 });
 
 document.getElementById("sidebarToggle")?.addEventListener("click", () => {

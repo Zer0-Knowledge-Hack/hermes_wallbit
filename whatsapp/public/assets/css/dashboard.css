@@ -41,6 +41,20 @@
 }
 .btn-primary:hover { background: #10b981; }
 
+.btn-danger {
+  background: #dc2626;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.btn-danger:hover { background: #ef4444; }
+
 .input-field {
   background: #1f2937;
   border: 1px solid #374151;

@@ -68,6 +68,16 @@ router.post("/whatsapp/restart", async (req, res) => {
     }
 });
 
+router.post("/whatsapp/reset", async (req, res) => {
+    try {
+        const { resetSessionData } = await import("../whatsapp/connection.js");
+        await resetSessionData();
+        res.json({ success: true, message: "Sesión borrada y reiniciando WhatsApp..." });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 router.post("/messages/send", async (req, res) => {
     try {
         const { jid, text } = req.body;
