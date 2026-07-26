@@ -1,0 +1,25 @@
+name = "whatshat-frontend"
+main = "src/worker-frontend.js"
+compatibility_date = "2026-06-08"
+
+[assets]
+directory = "./public"
+not_found_handling = "single-page-application"
+binding = "ASSETS"
+
+[[services]]
+binding = "AI_WORKER"
+service = "hermes-bot"
+
+[[containers]]
+class_name = "WhatsAppContainer"
+image = "./Dockerfile"
+max_instances = 1
+
+[[durable_objects.bindings]]
+name = "WHATSAPP_CONTAINER"
+class_name = "WhatsAppContainer"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["WhatsAppContainer"]

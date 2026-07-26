@@ -32,8 +32,8 @@ const config = {
         user: process.env.ADMIN_USER || "admin",
         password: process.env.ADMIN_PASSWORD || "admin123",
     },
-    authDir: path.resolve(__dirname, "../../auth"),
-    dataDir: path.resolve(__dirname, "../../data"),
+    authDir: process.env.VERCEL ? path.join("/tmp", "auth") : path.resolve(__dirname, "../../auth"),
+    dataDir: process.env.VERCEL ? path.join("/tmp", "data") : path.resolve(__dirname, "../../data"),
 };
 
 export default config;

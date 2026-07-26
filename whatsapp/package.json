@@ -9,11 +9,17 @@
     "tunnel": "node src/utils/tunnel.js",
     "dev:tunnel": "node src/utils/tunnel.js --start"
   },
-  "keywords": ["whatsapp", "wallbit", "baileys", "crm"],
+  "keywords": [
+    "whatsapp",
+    "wallbit",
+    "baileys",
+    "crm"
+  ],
   "author": "",
   "license": "ISC",
   "description": "Plataforma de automatización financiera para WhatsApp con integración Wallbit",
   "dependencies": {
+    "@cloudflare/containers": "^0.3.7",
     "@whiskeysockets/baileys": "^7.0.0-rc13",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

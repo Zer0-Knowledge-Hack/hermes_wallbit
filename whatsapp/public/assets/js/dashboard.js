@@ -1,4 +1,5 @@
-const socket = io();
+const backendUrl = typeof window !== "undefined" && window.BACKEND_URL ? window.BACKEND_URL : undefined;
+const socket = io(backendUrl);
 
 let currentChat = null;
 let activityChart = null;

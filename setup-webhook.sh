@@ -40,12 +40,12 @@ fi
 echo "  OK"
 
 if [ -n "${WHATSAPP_API_URL:-}" ]; then
-  echo "==> Verificando que el túnel de WhatsApp responda"
+  echo "==> Verificando que el servicio de WhatsApp en Cloudflare Containers responda"
   wa_status="$(curl -sS --max-time 10 -o /dev/null -w '%{http_code}' \
     "${WHATSAPP_API_URL}/api/whatsapp" 2>/dev/null || echo "error")"
   if [ "$wa_status" != "200" ]; then
-    echo "  ⚠ Aviso: El túnel de WhatsApp devolvió '${wa_status:-sin_conexion}'." >&2
-    echo "  Asegurate de tener corriendo 'npm run dev:tunnel' en la carpeta /whatsapp para activar el túnel." >&2
+    echo "  ⚠ Aviso: El servicio de WhatsApp devolvió '${wa_status:-sin_conexion}'." >&2
+    echo "  Nota: En el primer despliegue, Cloudflare Containers puede tardar hasta 2 minutos en aprovisionar la máquina virtual Linux." >&2
   else
     echo "  OK (${WHATSAPP_API_URL})"
   fi
@@ -91,9 +91,18 @@ if [ -n "${WHATSAPP_API_URL:-}" ]; then
   printf '%s' "$WHATSAPP_API_URL" | npx wrangler secret put WHATSAPP_API_URL
 fi
 
-echo "==> Desplegando el Worker a Cloudflare"
+echo "==> Desplegando el Worker principal (hermes-bot) a Cloudflare"
 npx wrangler deploy
 echo
+
+if [ -d "whatsapp" ]; then
+  echo "==> Desplegando el Contenedor y Frontend de WhatsApp (whatshat-frontend) a Cloudflare Containers"
+  (cd whatsapp && npx wrangler deploy --config wrangler-frontend.toml) || {
+    echo "  ⚠ Aviso: No se pudo subir la imagen del contenedor a Cloudflare Registry." >&2
+    echo "  Si ves un error 'Unauthorized', ejecuta 'npx wrangler login' en tu terminal para refrescar tu token OAuth de Cloudflare para Containers." >&2
+  }
+  echo
+fi
 
 echo "==> Registrando webhook (message + callback_query)"
 curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \

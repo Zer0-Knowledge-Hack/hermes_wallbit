@@ -46,10 +46,12 @@ startBot().catch((err) => {
     logger.error({ err: err.message }, "Error iniciando WhatsApp bot");
 });
 
-setInterval(() => broadcastDashboard(), 10000);
+if (!process.env.VERCEL) {
+    setInterval(() => broadcastDashboard(), 10000);
 
-server.listen(config.port, () => {
-    logger.info({ port: config.port, env: config.nodeEnv }, "Wallbit WhatsApp Assistant iniciado");
-});
+    server.listen(config.port, () => {
+        logger.info({ port: config.port, env: config.nodeEnv }, "Wallbit WhatsApp Assistant iniciado");
+    });
+}
 
 export default app;

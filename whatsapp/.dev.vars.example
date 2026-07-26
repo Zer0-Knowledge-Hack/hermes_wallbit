@@ -1,0 +1,7 @@
+# Copy to .dev.vars and fill in. That file is gitignored — never commit it.
+#
+# URL del túnel activo hacia el backend de WhatsApp (servidor Node.js/Baileys local en puerto 3000)
+BACKEND_URL=https://TU_DOMAIN.trycloudflare.com
+
+# URL del Worker principal de IA y Telegram (hermes-bot)
+WORKER_URL=https://hermes-bot.TU_DOMAIN.workers.dev

@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import { spawn, execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -8,6 +8,7 @@ import logger from "./logger.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const whatsappEnvPath = path.resolve(__dirname, "../../.env");
 const workerDevVarsPath = path.resolve(__dirname, "../../../.dev.vars");
+const frontendDevVarsPath = path.resolve(__dirname, "../../.dev.vars");
 
 /**
  * Actualiza o añade una clave en un archivo de entorno (.env / .dev.vars).
@@ -80,6 +81,22 @@ export async function startTunnel({ startServer = false } = {}) {
 
             // 3. Persistir en el Cloudflare Worker (.dev.vars)
             updateEnvFile(workerDevVarsPath, "WHATSAPP_API_URL", publicUrl);
+
+            // 4. Persistir en whatsapp/.dev.vars para el frontend worker
+            updateEnvFile(frontendDevVarsPath, "BACKEND_URL", publicUrl);
+
+            // 5. Actualizar automáticamente el secret en Cloudflare Worker (whatshat-frontend)
+            try {
+                logger.info("Actualizando variable BACKEND_URL en Cloudflare Worker (whatshat-frontend)...");
+                const wranglerConfigPath = path.resolve(__dirname, "../../wrangler-frontend.toml");
+                execSync(`npx wrangler secret put BACKEND_URL --config "${wranglerConfigPath}"`, {
+                    input: publicUrl,
+                    stdio: ["pipe", "ignore", "ignore"],
+                });
+                logger.info("✅ BACKEND_URL actualizado exitosamente en Cloudflare.");
+            } catch (err) {
+                logger.warn({ err: err.message }, "No se pudo actualizar BACKEND_URL en Cloudflare automáticamente.");
+            }
         }
     };
 
