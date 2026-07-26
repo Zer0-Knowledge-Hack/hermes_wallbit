@@ -354,6 +354,34 @@ a {
   transform: translateY(-2px);
 }
 
+/* WhatsApp leads in Bolivia, so it gets the solid button and its own colour. */
+.cta-wa {
+  background: #1fa855;
+  color: #fff;
+}
+
+.cta-wa:hover {
+  background: #17914a;
+  box-shadow: 0 14px 30px -8px rgba(31, 168, 85, 0.45);
+}
+
+.cta svg,
+.cta-ghost svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.demo-link {
+  color: var(--iris);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.demo-link:hover {
+  text-decoration: underline;
+}
+
 /* ── Demo ───────────────────────────────────────────────── */
 
 .demo {
