@@ -1,0 +1,40 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hermes-bot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-25",
+
+  // Workers AI. Free allowance: 10,000 neurons/day, resets 00:00 UTC.
+  "ai": {
+    "binding": "AI"
+  },
+
+  // One Durable Object instance per Telegram chat_id. Each instance owns a
+  // private SQLite database, so user data cannot leak across sessions.
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SESSION",
+        "class_name": "Session"
+      }
+    ]
+  },
+
+  // The free plan only supports the SQLite backend for Durable Objects.
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["Session"]
+    }
+  ],
+
+  // 21:00 UTC on weekdays, shortly after the US market close.
+  // Placeholder for the market sweep; currently only logs.
+  "triggers": {
+    "crons": ["0 21 * * 1-5"]
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

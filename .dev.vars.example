@@ -1,0 +1,20 @@
+# Copy to .dev.vars and fill in. That file is gitignored — never commit it.
+#
+#   cp .dev.vars.example .dev.vars
+#
+# WEBHOOK_SECRET and ENCRYPTION_KEY are values YOU invent. Generate both with:
+#   head -c 36 /dev/urandom | base64 | tr '+/' '-_' | tr -d '='
+
+# From @BotFather after /newbot. Looks like 8123456789:AAF...
+BOT_TOKEN=
+
+# Random string Telegram echoes back on every webhook call, so the Worker can
+# tell a real update from anyone who found the URL. A-Z a-z 0-9 _ - only.
+WEBHOOK_SECRET=
+
+# Root secret for encrypting stored Wallbit API keys at rest.
+# Rotating it unlinks every user — there is no key-versioning scheme.
+ENCRYPTION_KEY=
+
+# The URL printed by `wrangler deploy`, without a trailing slash.
+WORKER_URL=https://hermes-bot.YOUR-SUBDOMAIN.workers.dev
