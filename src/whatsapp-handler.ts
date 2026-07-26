@@ -198,8 +198,11 @@ export async function handleWhatsApp(
   const history = await session.history();
   const answer = await reply(env, profile, context, history, incoming.text);
 
-  await session.append("user", incoming.text);
-  await session.append("assistant", answer.text);
+  // Off-topic turns stay out of history, or the drift compounds.
+  if (!answer.offTopic) {
+    await session.append("user", incoming.text);
+    await session.append("assistant", answer.text);
+  }
 
   await sendText(env, incoming.from, answer.text);
 }

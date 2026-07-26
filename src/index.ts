@@ -752,8 +752,13 @@ async function handleUpdate(
   const safe = guardAgainstInventedFigures(answer, context.state === "ready");
   const keyboard = (await confirmKeyboard(session, answer.usedTools)) ?? safe.keyboard;
 
-  await session.append("user", message.text);
-  await session.append("assistant", safe.text);
+  // Off-topic turns stay out of history on purpose. Drift compounds: once such
+  // an exchange is in the transcript, the next turn reads it as precedent and
+  // the system prompt — ten messages back — loses to the last three.
+  if (!answer.offTopic) {
+    await session.append("user", message.text);
+    await session.append("assistant", safe.text);
+  }
 
   await sendMessage(env.BOT_TOKEN, chatId, toTelegramHtml(safe.text), keyboard);
 }
