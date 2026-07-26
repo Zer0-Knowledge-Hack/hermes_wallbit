@@ -43,6 +43,15 @@ export async function botReply(sock, jid, text) {
         throw new Error("No se pudo resolver el número del contacto para enviar por WhatsApp");
     }
 
+    // Simulate typing to avoid being flagged by Meta for instant replies
+    await sock.sendPresenceUpdate('composing', deliveryJid);
+    
+    // Calculate a natural delay: ~30ms per character, min 1s, max 4s.
+    const delayMs = Math.max(1000, Math.min(4000, text.length * 30));
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+    
+    await sock.sendPresenceUpdate('paused', deliveryJid);
+
     await sock.sendMessage(deliveryJid, { text });
     logger.info({ sessionJid: normalized, deliveryJid, chars: text.length }, "WhatsApp message sent");
 

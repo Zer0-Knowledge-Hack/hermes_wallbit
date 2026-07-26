@@ -55,44 +55,15 @@ async function renderDashboard(container) {
           ${kpiCard({ icon: "bx-brain", label: "AI Usage", value: fmtNumber(kpis.aiUsage), change: `${fmtNumber(kpis.aiTokens)} tokens` })}
           ${kpiCard({ icon: "bx-user", label: "Users", value: fmtNumber(kpis.users?.total || 0), change: `${kpis.users?.connected || 0} vinculados` })}
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <div class="glass-card p-5"><h3 class="font-semibold mb-4">Actividad API</h3><canvas id="chartActivity" height="200"></canvas></div>
-          <div class="glass-card p-5"><h3 class="font-semibold mb-4">Distribución Portfolio</h3><canvas id="chartPortfolio" height="200"></canvas></div>
-        </div>
         <div class="glass-card p-5">
           <h3 class="font-semibold mb-4">Actividad reciente</h3>
           ${renderTable(["Tipo", "Detalle", "Usuario", "Fecha"], (activity || []).slice(0, 8).map((a) => [
               escHtml(a.type), escHtml((a.detail || "").slice(0, 40)), escHtml(a.whatsapp || a.jid || "—"), fmtTime(a.created_at || a.timestamp),
           ]))}
         </div>`;
-
-        initDashboardCharts(kpis);
     } catch (err) {
         container.innerHTML = emptyState("bx-error", "Error cargando dashboard", err.message);
         Toast.error(err.message);
-    }
-}
-
-function initDashboardCharts(kpis) {
-    const actCtx = document.getElementById("chartActivity");
-    if (actCtx && window.Chart) {
-        chartInstances.activity = new Chart(actCtx, {
-            type: "line",
-            data: {
-                labels: ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"],
-                datasets: [{ label: "API Calls", data: [12, 19, 8, 15, 22, 10, kpis.apiCalls || 5], borderColor: "#1677FF", backgroundColor: "rgba(22,119,255,0.1)", fill: true, tension: 0.4 }],
-            },
-            options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { color: "#30363D" }, ticks: { color: "#9CA3AF" } }, y: { grid: { color: "#30363D" }, ticks: { color: "#9CA3AF" } } } },
-        });
-    }
-
-    const portCtx = document.getElementById("chartPortfolio");
-    if (portCtx && window.Chart) {
-        chartInstances.portfolio = new Chart(portCtx, {
-            type: "doughnut",
-            data: { labels: ["Stocks", "Cash", "Crypto"], datasets: [{ data: [60, 30, 10], backgroundColor: ["#1677FF", "#16C784", "#F59E0B"] }] },
-            options: { responsive: true, plugins: { legend: { position: "bottom", labels: { color: "#9CA3AF" } } } },
-        });
     }
 }
 
