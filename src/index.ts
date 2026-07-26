@@ -30,6 +30,8 @@ import {
   revokeApiKey,
   type WallbitFailure,
 } from "./wallbit";
+import { handleVerification, verifySignature } from "./whatsapp";
+import { handleWhatsApp } from "./whatsapp-handler";
 import { sendZavudevAlert } from "./zavudev";
 
 /** How long an account snapshot stays fresh before we ask Wallbit again. */
@@ -70,6 +72,41 @@ export default {
 
     if (url.pathname === "/link") {
       return handleLink(request, env);
+    }
+
+    if (url.pathname === "/whatsapp") {
+      // Meta proves it owns the endpoint with a GET carrying hub.* params.
+      if (request.method === "GET") {
+        return handleVerification(url, env);
+      }
+
+      if (request.method !== "POST") {
+        return new Response("method not allowed", { status: 405 });
+      }
+
+      // The signature covers the RAW bytes: parsing first and re-serialising
+      // would produce a different string and never match.
+      const raw = await request.text();
+      const signed = await verifySignature(
+        raw,
+        request.headers.get("X-Hub-Signature-256"),
+        env.WHATSAPP_APP_SECRET,
+      );
+
+      // Meta also retries on non-2xx, so rejection means "do not process".
+      if (!signed) {
+        console.warn("rejected whatsapp update: bad signature");
+        return new Response("ok");
+      }
+
+      try {
+        const body = JSON.parse(raw) as unknown;
+        ctx.waitUntil(handleWhatsApp(body, env, url.origin));
+      } catch (error) {
+        console.error("rejected whatsapp update: malformed body", error);
+      }
+
+      return new Response("ok");
     }
 
     if (request.method !== "POST") {
@@ -367,7 +404,7 @@ async function handleUpdate(
 
   // Telegram identifies the sender on every single update, so the bot knows who
   // it is talking to without ever asking.
-  await session.rememberIdentity(chatId, message.from?.first_name);
+  await session.rememberIdentity("telegram", String(chatId), message.from?.first_name);
 
   const profile = await session.profile();
   const name = profile.firstName ?? "";
