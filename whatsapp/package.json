@@ -9,16 +9,16 @@
     "build:css": "tailwindcss -i ./public/assets/css/input.css -o ./public/assets/css/app.css --minify",
     "dev:css": "tailwindcss -i ./public/assets/css/input.css -o ./public/assets/css/app.css --watch",
     "tunnel": "node src/utils/tunnel.js",
-    "dev:tunnel": "node src/utils/tunnel.js --start",
-    "postinstall": "npm run build:css"
+    "dev:tunnel": "node src/utils/tunnel.js --start"
   },
   "keywords": ["whatsapp", "wallbit", "baileys", "saas", "dashboard"],
   "author": "",
   "license": "ISC",
   "description": "Wallbit AI Dashboard — Enterprise SaaS Platform",
-    "dependencies": {
-        "@whiskeysockets/baileys": "^7.0.0-rc13",
-        "alpinejs": "^3.14.9",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc13",
+    "alpinejs": "^3.14.9",
+    "autoprefixer": "^10.4.20",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.0",
@@ -26,14 +26,12 @@
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "pino": "^10.3.1",
+    "postcss": "^8.4.49",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
     "socket.io": "^4.8.3",
+    "tailwindcss": "^3.4.17",
     "uuid": "^14.0.1"
-  },
-  "devDependencies": {
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.17"
   }
 }
+

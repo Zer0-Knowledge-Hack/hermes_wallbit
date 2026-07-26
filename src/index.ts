@@ -696,9 +696,9 @@ async function handleUpdate(
         await sendMessage(
           env.BOT_TOKEN,
           chatId,
-          `❌ <b>Fallo al conectar con el túnel del bot de WhatsApp:</b>\n\n` +
+          `❌ <b>Bot de WhatsApp no disponible:</b>\n\n` +
           `• <b>Error:</b> ${escapeHtml(connRes.error || statusRes.error || "Sin respuesta")}\n\n` +
-          `<i>Asegúrate de ejecutar <code>npm run dev:tunnel</code> en la carpeta /whatsapp para activar el túnel HTTPS.</i>`,
+          `<i>El servicio de WhatsApp no está respondiendo en este momento.</i>`,
         );
         return;
       }
@@ -712,21 +712,26 @@ async function handleUpdate(
           : conn?.status === "qr"
             ? "Esperando escaneo de QR"
             : "Desconectado";
-      const phone = conn?.phone ? `+${escapeHtml(conn.phone)}` : "No vinculado";
-      const wName = conn?.name ? escapeHtml(conn.name) : "Sin nombre";
+      const rawPhone = conn?.phone ?? "";
+      const phoneDisplay = rawPhone ? `+${escapeHtml(rawPhone)} (<code>${escapeHtml(rawPhone)}</code>)` : "No vinculado";
       const uptimeSec = stats?.uptime ?? 0;
       const uptimeMin = Math.floor(uptimeSec / 60);
+
+      // Build inline keyboard: if connected, offer a direct wa.me link to the active number
+      const waKeyboard: InlineKeyboard | undefined =
+        conn?.status === "connected" && rawPhone
+          ? [[{ text: "💬 Abrir en WhatsApp", url: `https://wa.me/${rawPhone.replace(/\D/g, "")}` }]]
+          : undefined;
 
       await sendMessage(
         env.BOT_TOKEN,
         chatId,
         `📱 <b>Estado de WhatsApp (/whatshat):</b>\n\n` +
         `• <b>Estado:</b> ${statusIcon} <b>${statusText}</b>\n` +
-        `• <b>Número:</b> <code>${phone}</code> (${wName})\n` +
-        `• <b>Túnel HTTPS:</b> 🟢 Activo\n` +
-        `• <b>URL Túnel:</b> <code>${escapeHtml(env.WHATSAPP_API_URL || "")}</code>\n` +
+        `• <b>Número:</b> ${phoneDisplay}\n` +
         `• <b>Uptime Bot:</b> ${uptimeMin} min\n` +
         `• <b>Mensajes Procesados:</b> ${stats?.messagesProcessed ?? 0}`,
+        waKeyboard,
       );
       return;
     }

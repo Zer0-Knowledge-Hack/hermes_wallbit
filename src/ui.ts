@@ -10,10 +10,9 @@ import type { AccountSnapshot } from "./wallbit";
  * far worse than no table.
  */
 
-export interface InlineButton {
-  text: string;
-  callback_data: string;
-}
+export type InlineButton =
+  | { text: string; callback_data: string }
+  | { text: string; url: string };
 
 export type InlineKeyboard = InlineButton[][];
 
