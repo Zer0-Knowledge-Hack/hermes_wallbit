@@ -399,6 +399,26 @@ a {
   font-weight: 600;
 }
 
+/* Emoji render in whatever colour and weight the visitor's OS ships, which is
+   the one thing on this card we cannot art-direct. These match the stroke
+   weight of the theme toggle instead. */
+.mi {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  vertical-align: -2px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.msg .mi {
+  margin-right: 6px;
+  color: var(--iris);
+}
+
 .keys {
   display: flex;
   gap: 6px;
@@ -408,12 +428,20 @@ a {
 }
 
 .key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 12px;
   border-radius: 999px;
   background: var(--paper-2);
   border: 1px solid var(--line);
   color: var(--ink-2);
   font-size: 0.6875rem;
+}
+
+.key .mi {
+  width: 11px;
+  height: 11px;
 }
 
 .key.go {
