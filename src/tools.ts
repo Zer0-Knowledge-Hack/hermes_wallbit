@@ -163,6 +163,61 @@ export const TOOLS = FUNCTIONS.map((fn) => ({ type: "function" as const, functio
 
 type Args = Record<string, unknown>;
 
+/**
+ * Spanish and lowercase spellings the model reaches for instead of the enum.
+ * Without this, "Tecnología" went straight to the API, which ignored the filter
+ * and returned the UNFILTERED catalogue — so the bot listed assets that had
+ * nothing to do with the category the user asked for.
+ */
+const CATEGORY_ALIASES: Record<string, string> = {
+  POPULAR: "MOST_POPULAR",
+  POPULARES: "MOST_POPULAR",
+  MASPOPULAR: "MOST_POPULAR",
+  ETFS: "ETF",
+  FONDOS: "ETF",
+  DIVIDENDO: "DIVIDENDS",
+  DIVIDENDOS: "DIVIDENDS",
+  TECNOLOGIA: "TECHNOLOGY",
+  TECH: "TECHNOLOGY",
+  SALUD: "HEALTH",
+  CONSUMO: "CONSUMER_GOODS",
+  CONSUMERGOODS: "CONSUMER_GOODS",
+  ENERGIA: "ENERGY_AND_WATER",
+  ENERGIAYAGUA: "ENERGY_AND_WATER",
+  AGUA: "ENERGY_AND_WATER",
+  FINANZAS: "FINANCE",
+  BANCOS: "FINANCE",
+  INMUEBLES: "REAL_ESTATE",
+  REALESTATE: "REAL_ESTATE",
+  BIENESRAICES: "REAL_ESTATE",
+  BONOS: "TREASURY_BILLS",
+  TESORO: "TREASURY_BILLS",
+  TREASURY: "TREASURY_BILLS",
+  VIDEOJUEGOS: "VIDEOGAMES",
+  JUEGOS: "VIDEOGAMES",
+  ARGENTINA: "ARGENTINA_ADR",
+  ADR: "ARGENTINA_ADR",
+};
+
+/**
+ * Returns a valid enum value, or null when the input matches nothing.
+ *
+ * Null means "do not send a category" — silently forwarding an unrecognised
+ * value is what produced the wrong listings in the first place.
+ */
+function normalizeCategory(raw: string | undefined): string | null {
+  if (raw === undefined) return null;
+
+  const key = raw
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-zA-Z]/g, "")
+    .toUpperCase();
+
+  if ((ASSET_CATEGORIES as readonly string[]).includes(key)) return key;
+  return CATEGORY_ALIASES[key] ?? null;
+}
+
 function str(args: Args, key: string): string | undefined {
   const value = args[key];
   return typeof value === "string" && value.length > 0 ? value : undefined;
@@ -187,20 +242,48 @@ export async function runTool(
 ): Promise<unknown> {
   switch (name) {
     case "search_assets": {
+      const requested = str(args, "category");
+      const category = normalizeCategory(requested);
+
+      if (requested !== undefined && category === null) {
+        // Told plainly instead of guessing: a wrong category is worse than none,
+        // because the user acts on a list that does not match what they asked.
+        return {
+          error: "unknown_category",
+          requested,
+          valid_categories: ASSET_CATEGORIES,
+        };
+      }
+
       const result = await listAssets(apiKey, {
         search: str(args, "search"),
-        category: str(args, "category"),
+        category: category ?? undefined,
       });
       if (!result.ok) return unwrap(result);
 
-      // Descriptions are long and rarely change the answer; drop them.
-      return (result.data?.data ?? []).map((asset) => ({
-        symbol: asset.symbol,
-        name: asset.name,
-        price: asset.price,
-        sector: asset.sector,
-        type: asset.asset_type,
-      }));
+      const found = result.data?.data ?? [];
+      const total = result.data?.count ?? found.length;
+
+      // The total travels with the list so the assistant never implies these are
+      // all of them. Wallbit's app shows the whole category; showing 8 of 47 as
+      // if that were the catalogue is what made the bot disagree with the app.
+      return {
+        category: category ?? "todas",
+        showing: found.length,
+        total,
+        note:
+          total > found.length
+            ? `Hay ${total} en esta categoría; estos son los primeros ${found.length} por relevancia. Decilo si el usuario podría esperar más.`
+            : undefined,
+        // Descriptions are long and rarely change the answer; drop them.
+        assets: found.map((asset) => ({
+          symbol: asset.symbol,
+          name: asset.name,
+          price: asset.price,
+          sector: asset.sector,
+          type: asset.asset_type,
+        })),
+      };
     }
 
     case "get_asset": {

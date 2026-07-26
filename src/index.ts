@@ -895,8 +895,9 @@ function keyboardFor(usedTools: { name: string; output: unknown }[]): InlineKeyb
   const search = usedTools.find((tool) => tool.name === "search_assets");
 
   if (search !== undefined) {
-    const symbols = Array.isArray(search.output)
-      ? (search.output as { symbol?: string }[])
+    const rows = (search.output as { assets?: { symbol?: string }[] })?.assets;
+    const symbols = Array.isArray(rows)
+      ? rows
         .map((row) => row.symbol)
         .filter((symbol): symbol is string => typeof symbol === "string")
         .slice(0, 9)
