@@ -80,18 +80,27 @@ curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
   -d "{\"url\":\"${WORKER_URL}\",\"secret_token\":\"${WEBHOOK_SECRET}\",\"allowed_updates\":[\"message\",\"callback_query\"]}"
 echo
 
+# The command menu follows the deployment, not the codebase: /notificar only
+# shows up where Zavu is actually configured. Same code for everyone, behaviour
+# driven by config — nobody has to fork the repo to get a clean bot.
+zavu_command=""
+if [ -n "${ZAVUDEV_API_KEY:-}" ]; then
+  zavu_command='{"command":"notificar","description":"Probar alerta proactiva via Zavu"},'
+fi
+
 echo "==> Menú de comandos"
 curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setMyCommands" \
   -H 'content-type: application/json' \
-  -d '{"commands":[
-    {"command":"saldo","description":"Tu saldo y tu cartera"},
-    {"command":"invertir","description":"Explorar donde invertir"},
-    {"command":"notificar","description":"Probar alerta proactiva via Zavudev SDK"},
-    {"command":"vincular","description":"Conectar tu cuenta de Wallbit"},
-    {"command":"desvincular","description":"Quitar el acceso a tu cuenta"},
-    {"command":"revocar","description":"Eliminar la API key en Wallbit"},
-    {"command":"reset","description":"Borrar la conversacion"}
-  ]}'
+  -d "{\"commands\":[
+    {\"command\":\"saldo\",\"description\":\"Tu saldo y tu cartera\"},
+    {\"command\":\"invertir\",\"description\":\"Explorar donde invertir\"},
+    {\"command\":\"alertas\",\"description\":\"Avisarme cuando entre plata\"},
+    ${zavu_command}
+    {\"command\":\"vincular\",\"description\":\"Conectar tu cuenta de Wallbit\"},
+    {\"command\":\"desvincular\",\"description\":\"Quitar el acceso a tu cuenta\"},
+    {\"command\":\"revocar\",\"description\":\"Eliminar la API key en Wallbit\"},
+    {\"command\":\"reset\",\"description\":\"Borrar la conversacion\"}
+  ]}"
 echo
 
 echo "==> Estado final"

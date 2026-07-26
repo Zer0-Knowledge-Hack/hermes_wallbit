@@ -551,7 +551,18 @@ async function handleUpdate(
       return;
     }
 
+    // Optional feature: only present where ZAVUDEV_API_KEY is configured. A
+    // deployment without it answers plainly instead of showing a broken command.
     case "/notificar": {
+      if (!env.ZAVUDEV_API_KEY) {
+        await sendMessage(
+          env.BOT_TOKEN,
+          chatId,
+          "Este bot no tiene Zavu configurado, así que no hay nada que probar acá.",
+        );
+        return;
+      }
+
       await sendTyping(env.BOT_TOKEN, chatId);
       const customText = message.text.replace(/^\/notificar(\s+|$)/i, "").trim();
       const alertMessage = customText
