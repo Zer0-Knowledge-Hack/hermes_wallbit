@@ -1,8 +1,82 @@
 ---
 import "../styles/global.css";
 
-// Set PUBLIC_BOT_URL at build time once the bot username is final.
 const botUrl = import.meta.env.PUBLIC_BOT_URL ?? "https://t.me/";
+
+const steps = [
+  {
+    n: "01",
+    title: "Conectás tu cuenta",
+    body: "Generás una API key en Wallbit y la pegás en un enlace de un solo uso. Queda cifrada.",
+  },
+  {
+    n: "02",
+    title: "Hermes vigila",
+    body: "Revisa tu cuenta cada pocas horas. No tenés que abrir nada ni acordarte de nada.",
+  },
+  {
+    n: "03",
+    title: "Te escribe",
+    body: "Cuando entra dinero te avisa con el monto real y cuánto quedó sin invertir.",
+  },
+  {
+    n: "04",
+    title: "Confirmás vos",
+    body: "La orden sale solo si tocás el botón, sobre los números exactos que viste.",
+  },
+];
+
+const segments = [
+  {
+    title: "Cobrás sueldo del exterior",
+    body: "Te pagan todos los meses en Wallbit. Estás fuera del sistema de pensiones y no hay nadie ahorrando por vos.",
+  },
+  {
+    title: "Facturás como freelancer",
+    body: "Montos variables, fechas irregulares. Sostener un hábito de inversión cuando el ingreso no es parejo es difícil sin ayuda.",
+  },
+  {
+    title: "Invertís desde Bolivia",
+    body: "Cargás bolivianos para tener dólares digitales y acceder al mercado estadounidense, pero no sabés por dónde arrancar.",
+  },
+];
+
+const differences = [
+  {
+    n: "01",
+    title: "Llega antes que la duda",
+    body: "No espera a que abras la sección de inversiones. Te busca en el momento exacto en que entró la plata, que es cuando la decisión se toma o se posterga para siempre.",
+  },
+  {
+    n: "02",
+    title: "Conoce tus números",
+    body: "Ve tu saldo, tu cartera y tu historial reales. No da consejos genéricos: te habla de la plata que tenés hoy, con el precio de hoy.",
+  },
+  {
+    n: "03",
+    title: "Vive donde ya estás",
+    body: "Todo ocurre en Telegram. Sin instalar nada, sin otra contraseña, sin una app más compitiendo por tu atención.",
+  },
+];
+
+const security = [
+  {
+    k: "Cifrada",
+    body: "Tu API key se guarda cifrada y solo se usa para leer tu cuenta y ejecutar lo que confirmás.",
+  },
+  {
+    k: "Nunca sin vos",
+    body: "Ninguna orden se envía sin que toques el botón, y siempre sobre cifras que ya viste en pantalla.",
+  },
+  {
+    k: "Sin salida",
+    body: "Hermes no puede retirar dinero ni transferirlo a terceros. La API de Wallbit sencillamente no lo permite.",
+  },
+  {
+    k: "Reversible",
+    body: "Quitás el acceso cuando quieras, y podés pedirle a Wallbit que elimine la credencial por completo.",
+  },
+];
 ---
 
 <!doctype html>
@@ -13,7 +87,7 @@ const botUrl = import.meta.env.PUBLIC_BOT_URL ?? "https://t.me/";
     <title>Hermes · Tu plata en Wallbit, trabajando</title>
     <meta
       name="description"
-      content="Agente de Telegram que lee tu cuenta de Wallbit, te avisa cuando entra plata y te ayuda a decidir dónde invertirla."
+      content="Agente de Telegram que lee tu cuenta de Wallbit, te avisa cuando entra plata y te acompaña a decidir dónde invertirla."
     />
     <meta property="og:title" content="Hermes · Tu plata en Wallbit, trabajando" />
     <meta
@@ -21,204 +95,177 @@ const botUrl = import.meta.env.PUBLIC_BOT_URL ?? "https://t.me/";
       content="Cobrás del exterior en Wallbit. Hermes te avisa cuando entra plata y te acompaña a invertirla, desde Telegram."
     />
     <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#07080a" />
   </head>
 
   <body>
-    <main>
-      <section style="border-top: 0;">
-        <div class="wrap hero-layout">
-          <div>
-            <span class="eyebrow">Para quienes cobran en dólares desde Bolivia</span>
-            <h1>Cobrás en Wallbit.<br />Tu plata se queda quieta.</h1>
-            <p class="lead">
-              Hermes es un agente de Telegram que lee tu cuenta de Wallbit, te avisa
-              apenas entra dinero y te acompaña a decidir qué hacer con él. Sin abrir
-              otra app.
-            </p>
+    <!-- Hero -->
+    <header class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <span class="label">Hermes · para Bolivia</span>
+          <h1>Tu plata llega.<br /><em>Y ahí se queda.</em></h1>
+          <p>
+            Hermes lee tu cuenta de Wallbit, te avisa apenas entra dinero y te acompaña
+            a decidir qué hacer con él. Todo en Telegram, sin abrir otra app.
+          </p>
+          <div class="actions">
             <a class="cta" href={botUrl}>Abrir en Telegram →</a>
-            <p class="cta-note">Gratis. Se conecta con tu propia API key de Wallbit.</p>
+            <span class="cta-sub">Gratis · con tu propia API key</span>
           </div>
+        </div>
 
-          <div class="chat" aria-label="Ejemplo de conversación">
-            <div class="bubble bot">
-              💸 <strong>Te entraron $500.00</strong><br />
-              Julio, tenés <strong>$520.00</strong> sin invertir en tu cuenta.<br />
-              ¿Vemos qué hacer con eso?
+        <div class="phone" aria-label="Conversación de ejemplo con Hermes">
+          <div class="screen">
+            <div class="msg bot d1">
+              💸 <b>Te entraron $500.00</b><br />
+              Julio, tenés <b>$520.00</b> sin invertir.<br />¿Vemos qué hacer con eso?
             </div>
-            <div class="chat-buttons">
-              <span class="chat-button">🔎 Ver opciones</span>
-              <span class="chat-button">💰 Ver mi cuenta</span>
+            <div class="keys d2">
+              <span class="key">🔎 Ver opciones</span>
+              <span class="key">💰 Mi cuenta</span>
             </div>
-            <div class="bubble user">Quiero algo diversificado, unos $200</div>
-            <div class="bubble bot">
-              <strong>SPY</strong> sigue al S&amp;P 500, hoy $738.93.<br />
-              Con $200: comisión $1.00, quedan $199.00 → <strong>0.2694 acciones</strong>.<br />
-              Te alcanza: tenés $520.00.
+            <div class="msg me d3">Algo diversificado, unos $200</div>
+            <div class="msg bot d4">
+              <b>SPY</b> sigue al S&amp;P 500. Hoy $738.93.<br />
+              Con $200 → comisión $1.00, quedan $199.00.<br />
+              Son <b>0.2694 acciones</b>. Te alcanza.
             </div>
-            <div class="chat-buttons">
-              <span class="chat-button">✅ Comprar $200 de SPY</span>
+            <div class="keys d5">
+              <span class="key go">✅ Comprar $200 de SPY</span>
             </div>
           </div>
         </div>
-      </section>
+      </div>
+    </header>
 
-      <section>
-        <div class="wrap">
-          <h2>El problema no es cobrar. Es lo que pasa después.</h2>
-          <p class="lead">
-            Wallbit ya resuelve que te paguen del exterior, que tengas dólares y que
-            pagues con QR en Bolivia. Lo que no existe es el puente entre que entra la
-            plata y que se convierta en patrimonio. Hoy ese puente depende de que te
-            acuerdes, sepas qué elegir y lo hagas.
+    <!-- Statement -->
+    <section class="statement">
+      <div class="wrap statement-grid reveal">
+        <div>
+          <span class="label">El problema</span>
+          <h2 style="margin: 20px 0 22px;">Cobrar ya está resuelto.<br />Lo que sigue, no.</h2>
+          <p>
+            Wallbit hace que te paguen del exterior, que tengas dólares y que pagues con
+            QR en Bolivia. Lo que no existe es el puente entre que entra la plata y que
+            se convierte en patrimonio. Hoy ese puente depende de que te acuerdes, de
+            que sepas qué elegir y de que lo hagas.
           </p>
         </div>
-      </section>
 
-      <section>
-        <div class="wrap">
-          <h2>Cómo funciona</h2>
-          <div class="grid" style="margin-top: 40px;">
-            <div class="card">
-              <div class="step-number">1</div>
-              <h3>Conectás tu cuenta</h3>
-              <p>
-                Generás una API key en Wallbit y la pegás en un enlace de un solo uso.
-                Queda cifrada y podés quitarla cuando quieras.
-              </p>
-            </div>
-            <div class="card">
-              <div class="step-number">2</div>
-              <h3>Hermes te avisa</h3>
-              <p>
-                Revisa tu cuenta cada pocas horas. Cuando entra dinero, te escribe con
-                el monto real y cuánto tenés sin invertir.
-              </p>
-            </div>
-            <div class="card">
-              <div class="step-number">3</div>
-              <h3>Decidís conversando</h3>
-              <p>
-                Le contás cuánto querés destinar y para cuándo. Te muestra instrumentos
-                reales con precio de hoy, comisión y cuántas acciones te tocan.
-              </p>
-            </div>
-            <div class="card">
-              <div class="step-number">4</div>
-              <h3>Confirmás vos</h3>
-              <p>
-                La orden se envía solo si tocás el botón, sobre los números exactos que
-                viste. Hermes nunca opera por su cuenta.
-              </p>
-            </div>
-          </div>
+        <div class="ledger">
+          <div class="ledger-row head"><span>Movimiento</span><span>Estado</span></div>
+          <div class="ledger-row"><span>Pago recibido · $500.00</span><b>Acreditado</b></div>
+          <div class="ledger-row"><span>Día 3</span><span class="idle">Sin mover</span></div>
+          <div class="ledger-row"><span>Día 11</span><span class="idle">Sin mover</span></div>
+          <div class="ledger-row"><span>Día 26</span><span class="idle">Sin mover</span></div>
+          <div class="ledger-row"><span>Próximo pago</span><b>$500.00</b></div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section>
-        <div class="wrap">
-          <h2>Para quién es</h2>
-          <div class="grid" style="margin-top: 40px;">
-            <div class="card">
-              <h3>Cobrás sueldo del exterior</h3>
-              <p>
-                Te pagan todos los meses en Wallbit. Estás fuera del sistema de
-                pensiones y nadie está ahorrando por vos.
-              </p>
-            </div>
-            <div class="card">
-              <h3>Facturás como freelancer</h3>
-              <p>
-                Cobrás montos variables y en fechas irregulares. Es difícil sostener un
-                hábito cuando el ingreso no es parejo.
-              </p>
-            </div>
-            <div class="card">
-              <h3>Querés invertir desde Bolivia</h3>
-              <p>
-                Cargás bolivianos para tener dólares digitales y acceder al mercado
-                estadounidense, pero no sabés por dónde empezar.
-              </p>
-            </div>
-          </div>
+    <!-- Steps -->
+    <section class="steps">
+      <div class="wrap">
+        <span class="label">Cómo funciona</span>
+        <h2 style="margin-top: 20px; font-size: clamp(1.85rem, 4.4vw, 2.7rem);">
+          Cuatro pasos, y después nada.
+        </h2>
+        <div class="steps-list reveal">
+          {
+            steps.map((step) => (
+              <div class="step">
+                <span class="n">{step.n}</span>
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
+              </div>
+            ))
+          }
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section>
-        <div class="wrap">
-          <h2>Qué hace distinto a Hermes</h2>
-          <div class="grid" style="margin-top: 40px;">
-            <div class="card">
-              <h3>Llega antes</h3>
-              <p>
-                No espera a que abras la sección de inversiones. Te busca en el momento
-                exacto en que entró la plata, que es cuando la decisión importa.
-              </p>
-            </div>
-            <div class="card">
-              <h3>Conoce tu situación</h3>
-              <p>
-                Ve tu saldo, tu cartera y tu historial reales. No te da consejos
-                genéricos: te habla de los números que tenés hoy.
-              </p>
-            </div>
-            <div class="card">
-              <h3>Vive donde ya estás</h3>
-              <p>
-                Todo ocurre en Telegram. Sin instalar nada, sin otra contraseña, sin
-                abrir una app más.
-              </p>
-            </div>
-          </div>
+    <!-- Segments -->
+    <section class="segments">
+      <div class="wrap">
+        <span class="label">Para quién</span>
+        <h2 style="margin: 20px 0 40px; font-size: clamp(1.85rem, 4.4vw, 2.7rem);">
+          Gente que cobra en dólares<br />y no tiene quién la acompañe.
+        </h2>
+        <div class="reveal">
+          {
+            segments.map((segment) => (
+              <div class="segment">
+                <h3>{segment.title}</h3>
+                <p>{segment.body}</p>
+              </div>
+            ))
+          }
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section>
-        <div class="wrap">
-          <h2>Sobre tu dinero y tus datos</h2>
-          <ul class="security-list" style="margin-top: 32px; max-width: 68ch;">
-            <li>
-              <span class="check">✓</span>
-              <span>Tu API key se guarda cifrada y solo se usa para leer tu cuenta y ejecutar lo que confirmás.</span>
-            </li>
-            <li>
-              <span class="check">✓</span>
-              <span>Ninguna orden se envía sin que toques el botón de confirmación sobre números que ya viste.</span>
-            </li>
-            <li>
-              <span class="check">✓</span>
-              <span>Hermes no puede retirar dinero ni transferirlo a terceros. La API de Wallbit no lo permite.</span>
-            </li>
-            <li>
-              <span class="check">✓</span>
-              <span>Cada conversación vive aislada de las demás, en su propio almacenamiento.</span>
-            </li>
-            <li>
-              <span class="check">✓</span>
-              <span>Podés quitar el acceso cuando quieras, y pedirle a Wallbit que elimine la credencial.</span>
-            </li>
-          </ul>
+    <!-- Difference -->
+    <section class="diff">
+      <div class="wrap">
+        <span class="label">La diferencia</span>
+        <h2 style="margin: 20px 0 12px; font-size: clamp(1.85rem, 4.4vw, 2.7rem);">
+          No es otro chat.
+        </h2>
+        <div class="reveal">
+          {
+            differences.map((item) => (
+              <div class="diff-row">
+                <span class="num">{item.n}</span>
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
+              </div>
+            ))
+          }
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section>
-        <div class="wrap" style="text-align: center;">
-          <h2>Que tu plata no se quede esperando</h2>
-          <p class="lead" style="margin: 0 auto 28px;">
-            Conectá tu cuenta en dos minutos y empezá a decidir con datos reales.
-          </p>
-          <a class="cta" href={botUrl}>Abrir en Telegram →</a>
+    <!-- Security -->
+    <section class="security">
+      <div class="wrap">
+        <span class="label">Tu dinero</span>
+        <h2 style="margin-top: 20px; font-size: clamp(1.85rem, 4.4vw, 2.7rem);">
+          Hermes propone.<br />Vos disponés.
+        </h2>
+        <div class="sec-grid reveal">
+          {
+            security.map((item) => (
+              <div class="sec">
+                <span class="k">{item.k}</span>
+                <p>{item.body}</p>
+              </div>
+            ))
+          }
         </div>
-      </section>
-    </main>
+      </div>
+    </section>
+
+    <!-- Close -->
+    <section class="close">
+      <div class="wrap">
+        <h2>Que tu plata no espere.</h2>
+        <p>Conectá tu cuenta en dos minutos y empezá a decidir con datos reales.</p>
+        <a class="cta" href={botUrl}>Abrir en Telegram →</a>
+      </div>
+    </section>
 
     <footer>
       <div class="wrap">
-        <p>Hermes · Construido sobre la API pública de Wallbit.</p>
+        <div class="foot">
+          <span>Hermes</span>
+          <span>Construido sobre la API pública de Wallbit</span>
+        </div>
         <p class="disclaimer">
-          Hermes es una herramienta de información y automatización. No es asesoramiento
-          financiero ni garantiza resultado alguno. Toda inversión implica riesgo de
-          pérdida, y el comportamiento pasado de un instrumento no predice el futuro.
-          Las decisiones son siempre del usuario.
+          Hermes es una herramienta de información y automatización. No constituye
+          asesoramiento financiero ni garantiza resultado alguno. Toda inversión implica
+          riesgo de pérdida, y el comportamiento pasado de un instrumento no predice su
+          comportamiento futuro. Las decisiones y su ejecución son siempre del usuario.
         </p>
       </div>
     </footer>
