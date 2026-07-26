@@ -2,6 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 import { decrypt, encrypt } from "./crypto";
 import type { Env } from "./env";
 import { sendMessage } from "./telegram";
+import { sendButtons as sendWhatsAppButtons } from "./whatsapp";
 import { getCheckingBalance, type AccountSnapshot } from "./wallbit";
 
 /** How many past turns are replayed into the model as context. */
@@ -25,6 +26,8 @@ const WATCH_INTERVAL_MS = 3 * 60 * 60 * 1000;
 
 /** Below this, an increase is rounding or a refund, not an income event. */
 const MIN_INFLOW_USD = 1;
+
+export type Channel = "telegram" | "whatsapp";
 
 export interface StagedTrade {
   symbol: string;
@@ -130,14 +133,15 @@ export class Session extends DurableObject<Env> {
   // --- profile -----------------------------------------------------------
 
   /**
-   * Telegram sends the sender on every update; we keep the latest.
+   * Both platforms identify the sender on every update; we keep the latest.
    *
-   * The chat_id is stored deliberately: a Durable Object cannot recover the name
-   * it was addressed by, and the alarm handler needs it to send a message
-   * nobody asked for.
+   * The address and channel are stored deliberately: a Durable Object cannot
+   * recover the name it was addressed by, and the alarm handler needs both to
+   * send a message nobody asked for, through the right platform.
    */
-  rememberIdentity(chatId: number, firstName?: string): void {
-    this.write("chat_id", String(chatId));
+  rememberIdentity(channel: Channel, address: string, firstName?: string): void {
+    this.write("channel", channel);
+    this.write("chat_id", address);
     if (firstName !== undefined) this.write("first_name", firstName);
   }
 
@@ -364,22 +368,30 @@ export class Session extends DurableObject<Env> {
       const detected = await this.checkForInflow();
 
       if (detected !== null) {
-        const chatId = Number(this.read("chat_id"));
+        const address = this.read("chat_id");
+        const channel = (this.read("channel") ?? "telegram") as Channel;
 
-        if (Number.isFinite(chatId) && chatId !== 0) {
+        if (address !== null) {
           const name = this.read("first_name");
-          await sendMessage(
-            this.env.BOT_TOKEN,
-            chatId,
+          const body =
             `💸 <b>Te entraron $${detected.inflow.toFixed(2)}</b>\n\n` +
-              `${name ? `${name}, t` : "T"}enés <b>$${detected.balance.toFixed(2)}</b> ` +
-              `sin invertir en tu cuenta.\n\n` +
-              `¿Vemos qué hacer con eso?`,
-            [
+            `${name ? `${name}, t` : "T"}enés <b>$${detected.balance.toFixed(2)}</b> ` +
+            `sin invertir en tu cuenta.\n\n` +
+            `¿Vemos qué hacer con eso?`;
+
+          if (channel === "whatsapp") {
+            // Past the 24-hour window WhatsApp rejects free-form text and only
+            // accepts an approved template. The failure is logged in send().
+            await sendWhatsAppButtons(this.env, address, body, [
+              { id: "cats", label: "Ver opciones" },
+              { id: "balance", label: "Mi cuenta" },
+            ]);
+          } else {
+            await sendMessage(this.env.BOT_TOKEN, Number(address), body, [
               [{ text: "🔎 Ver opciones", callback_data: "cats" }],
               [{ text: "💰 Ver mi cuenta", callback_data: "balance" }],
-            ],
-          );
+            ]);
+          }
         }
       }
     } catch (error) {

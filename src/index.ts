@@ -30,6 +30,8 @@ import {
   revokeApiKey,
   type WallbitFailure,
 } from "./wallbit";
+import { handleVerification, verifySignature } from "./whatsapp";
+import { handleWhatsApp } from "./whatsapp-handler";
 import { sendZavudevAlert } from "./zavudev";
 import { getWhatsAppConnectionInfo, getWhatsAppStatus } from "./whatsapp-client";
 
@@ -126,6 +128,41 @@ export default {
 
     if (url.pathname === "/link") {
       return handleLink(request, env);
+    }
+
+    if (url.pathname === "/whatsapp") {
+      // Meta proves it owns the endpoint with a GET carrying hub.* params.
+      if (request.method === "GET") {
+        return handleVerification(url, env);
+      }
+
+      if (request.method !== "POST") {
+        return new Response("method not allowed", { status: 405 });
+      }
+
+      // The signature covers the RAW bytes: parsing first and re-serialising
+      // would produce a different string and never match.
+      const raw = await request.text();
+      const signed = await verifySignature(
+        raw,
+        request.headers.get("X-Hub-Signature-256"),
+        env.WHATSAPP_APP_SECRET,
+      );
+
+      // Meta also retries on non-2xx, so rejection means "do not process".
+      if (!signed) {
+        console.warn("rejected whatsapp update: bad signature");
+        return new Response("ok");
+      }
+
+      try {
+        const body = JSON.parse(raw) as unknown;
+        ctx.waitUntil(handleWhatsApp(body, env, url.origin));
+      } catch (error) {
+        console.error("rejected whatsapp update: malformed body", error);
+      }
+
+      return new Response("ok");
     }
 
     if (url.pathname === "/api/whatsapp/ai" && request.method === "POST") {
@@ -427,7 +464,7 @@ async function handleUpdate(
 
   // Telegram identifies the sender on every single update, so the bot knows who
   // it is talking to without ever asking.
-  await session.rememberIdentity(chatId, message.from?.first_name);
+  await session.rememberIdentity("telegram", String(chatId), message.from?.first_name);
 
   const profile = await session.profile();
   const name = profile.firstName ?? "";
@@ -660,8 +697,8 @@ async function handleUpdate(
           env.BOT_TOKEN,
           chatId,
           `❌ <b>Fallo al conectar con el túnel del bot de WhatsApp:</b>\n\n` +
-            `• <b>Error:</b> ${escapeHtml(connRes.error || statusRes.error || "Sin respuesta")}\n\n` +
-            `<i>Asegúrate de ejecutar <code>npm run dev:tunnel</code> en la carpeta /whatsapp para activar el túnel HTTPS.</i>`,
+          `• <b>Error:</b> ${escapeHtml(connRes.error || statusRes.error || "Sin respuesta")}\n\n` +
+          `<i>Asegúrate de ejecutar <code>npm run dev:tunnel</code> en la carpeta /whatsapp para activar el túnel HTTPS.</i>`,
         );
         return;
       }
@@ -684,12 +721,12 @@ async function handleUpdate(
         env.BOT_TOKEN,
         chatId,
         `📱 <b>Estado de WhatsApp (/whatshat):</b>\n\n` +
-          `• <b>Estado:</b> ${statusIcon} <b>${statusText}</b>\n` +
-          `• <b>Número:</b> <code>${phone}</code> (${wName})\n` +
-          `• <b>Túnel HTTPS:</b> 🟢 Activo\n` +
-          `• <b>URL Túnel:</b> <code>${escapeHtml(env.WHATSAPP_API_URL || "")}</code>\n` +
-          `• <b>Uptime Bot:</b> ${uptimeMin} min\n` +
-          `• <b>Mensajes Procesados:</b> ${stats?.messagesProcessed ?? 0}`,
+        `• <b>Estado:</b> ${statusIcon} <b>${statusText}</b>\n` +
+        `• <b>Número:</b> <code>${phone}</code> (${wName})\n` +
+        `• <b>Túnel HTTPS:</b> 🟢 Activo\n` +
+        `• <b>URL Túnel:</b> <code>${escapeHtml(env.WHATSAPP_API_URL || "")}</code>\n` +
+        `• <b>Uptime Bot:</b> ${uptimeMin} min\n` +
+        `• <b>Mensajes Procesados:</b> ${stats?.messagesProcessed ?? 0}`,
       );
       return;
     }

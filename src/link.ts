@@ -1,6 +1,7 @@
 import type { Env } from "./env";
 import { sendMessage } from "./telegram";
 import { verifyApiKey, type WallbitFailure } from "./wallbit";
+import { sendText as sendWhatsAppText } from "./whatsapp";
 
 /**
  * Distinguishes "your key is wrong" from "we could not check right now". Telling
@@ -23,20 +24,25 @@ const VERIFY_FAILURE: Record<WallbitFailure, string> = {
  * which Durable Object to ask. The nonce is the secret, it lives server-side,
  * expires in 10 minutes and is burned on first use.
  */
-function parseToken(token: string): { chatId: string; nonce: string } | null {
+/**
+ * `address` is the Durable Object name: a bare Telegram chat_id, or a phone
+ * prefixed with `wa:` for WhatsApp. The prefix is what keeps a chat_id and a
+ * phone number from colliding on the same object.
+ */
+function parseToken(token: string): { address: string; nonce: string } | null {
   const separator = token.indexOf(".");
   if (separator <= 0) return null;
 
-  const chatId = token.slice(0, separator);
+  const address = token.slice(0, separator);
   const nonce = token.slice(separator + 1);
 
   // The nonce charset is pinned to base64url, not just a length. This page is
   // reflected back to the user, so anything looser becomes an injection vector
   // on the exact form where they type their credential.
-  if (!/^-?\d{1,20}$/.test(chatId)) return null;
+  if (!/^(wa:)?-?\d{1,20}$/.test(address)) return null;
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(nonce)) return null;
 
-  return { chatId, nonce };
+  return { address, nonce };
 }
 
 /** Defense in depth: nothing user-controlled reaches the page unescaped. */
@@ -49,8 +55,8 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export function buildToken(chatId: number, nonce: string): string {
-  return `${chatId}.${nonce}`;
+export function buildToken(address: string | number, nonce: string): string {
+  return `${address}.${nonce}`;
 }
 
 const SECURITY_HEADERS = {
@@ -157,7 +163,7 @@ export async function handleLink(request: Request, env: Env): Promise<Response> 
     const parsed = token ? parseToken(token) : null;
     if (!token || !parsed) return expired();
 
-    const session = env.SESSION.get(env.SESSION.idFromName(parsed.chatId));
+    const session = env.SESSION.get(env.SESSION.idFromName(parsed.address));
     if (!(await session.verifyLinkToken(parsed.nonce))) return expired();
 
     return form(token);
@@ -172,7 +178,7 @@ export async function handleLink(request: Request, env: Env): Promise<Response> 
     if (!parsed) return expired();
     if (apiKey.length < 8) return form(token, "Esa API key no parece válida.");
 
-    const session = env.SESSION.get(env.SESSION.idFromName(parsed.chatId));
+    const session = env.SESSION.get(env.SESSION.idFromName(parsed.address));
 
     // Check the nonce before spending a request on Wallbit.
     if (!(await session.verifyLinkToken(parsed.nonce))) return expired();
@@ -191,15 +197,20 @@ export async function handleLink(request: Request, env: Env): Promise<Response> 
     const watching = await session.startWatching();
 
     const { firstName } = await session.profile();
-    await sendMessage(
-      env.BOT_TOKEN,
-      Number(parsed.chatId),
+    const confirmation =
       `${firstName ? `Listo ${firstName}` : "Listo"}, tu cuenta de Wallbit quedó vinculada.` +
-        (watching
-          ? "\n\n🔔 Voy a avisarte cuando entre plata para que no se quede quieta. " +
-            "Si te molesta, apagalas con /alertas."
-          : ""),
-    );
+      (watching
+        ? "\n\n🔔 Voy a avisarte cuando entre plata para que no se quede quieta. " +
+          "Si te molesta, apagalas con /alertas."
+        : "");
+
+    // The address carries its own channel, so the confirmation goes back through
+    // whichever platform started the flow.
+    if (parsed.address.startsWith("wa:")) {
+      await sendWhatsAppText(env, parsed.address.slice(3), confirmation);
+    } else {
+      await sendMessage(env.BOT_TOKEN, Number(parsed.address), confirmation);
+    }
 
     return done();
   }
