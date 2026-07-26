@@ -49,8 +49,8 @@ startBot().catch((err) => {
 if (!process.env.VERCEL) {
     setInterval(() => broadcastDashboard(), 10000);
 
-    server.listen(config.port, () => {
-        logger.info({ port: config.port, env: config.nodeEnv }, "Wallbit WhatsApp Assistant iniciado");
+    server.listen(config.port, "0.0.0.0", () => {
+        logger.info({ port: config.port, env: config.nodeEnv }, "Wallbit WhatsApp Assistant iniciado en 0.0.0.0");
     });
 }
 
