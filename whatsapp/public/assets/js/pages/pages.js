@@ -532,8 +532,12 @@ async function renderWhatsApp(container) {
         </div>
         <div class="flex flex-wrap gap-2 justify-center mt-6">
           <button id="btnWaRestart" class="btn-primary"><i class="bx bx-rotate-right"></i> Reiniciar sesión</button>
-          <button id="btnWaReset" class="btn-danger"><i class="bx bx-trash"></i> Nuevo QR</button>
+          <button id="btnWaReset" class="btn-danger"><i class="bx bx-trash"></i> Borrar datos</button>
         </div>
+        <p class="text-xs text-muted mt-3">
+          <strong class="text-white/70">Reiniciar sesión</strong>: borra datos y genera nuevo QR •
+          <strong class="text-white/70">Borrar datos</strong>: limpia auth/data sin reiniciar
+        </p>
       </div>
       <div class="glass-card p-6">
         <h3 class="font-semibold mb-4">Estado de sesión</h3>
@@ -551,6 +555,10 @@ async function renderWhatsApp(container) {
       </div>
     </div>`;
 
+    // Always reset UI to a clean disconnected state first to avoid stale data
+    // from a previous session being shown while the fresh fetch is in-flight.
+    const CLEAN_STATE = { status: "disconnected", phone: null, name: null, connectedAt: null, qr: null };
+
     function updateUI(data) {
         document.getElementById("waStatus").innerHTML = waStatusBadge(data.status);
         document.getElementById("waPhone").textContent = data.phone || "—";
@@ -565,9 +573,12 @@ async function renderWhatsApp(container) {
         } else if (data.status === "qr") {
             qrArea.innerHTML = `<div class="text-muted py-12"><i class="bx bx-loader-alt animate-spin text-4xl"></i><p class="mt-2">Generando QR...</p></div>`;
         } else {
-            qrArea.innerHTML = `<div class="text-muted py-12"><i class="bx bx-qr text-6xl opacity-30"></i><p class="mt-2">Esperando conexión...</p><p class="text-xs mt-2">Pulsa "Nuevo QR" si no aparece</p></div>`;
+            qrArea.innerHTML = `<div class="text-muted py-12"><i class="bx bx-qr text-6xl opacity-30"></i><p class="mt-2">Esperando conexión...</p><p class="text-xs mt-2">Pulsa "Reiniciar sesión" para generar un nuevo QR</p></div>`;
         }
     }
+
+    // Show clean slate immediately, then fetch fresh state from server
+    updateUI(CLEAN_STATE);
 
     try {
         const { data } = await get("/whatsapp");
@@ -578,27 +589,41 @@ async function renderWhatsApp(container) {
 
     unsub = onWhatsAppState(updateUI);
 
+    // Reiniciar sesión: wipes auth/data AND starts fresh (new QR)
     document.getElementById("btnWaRestart").onclick = async () => {
+        if (!confirm("¿Reiniciar sesión? Se borrarán los datos de autenticación y se generará un nuevo QR.")) return;
+        const btn = document.getElementById("btnWaRestart");
+        btn.disabled = true;
         try {
-            await post("/whatsapp/restart", {});
-            Toast.info("Reiniciando sesión WhatsApp...");
+            updateUI(CLEAN_STATE);
+            await post("/whatsapp/reset", {});
+            Toast.info("Reiniciando sesión — espera el nuevo QR...");
         } catch (err) {
             Toast.error(err.message);
+        } finally {
+            btn.disabled = false;
         }
     };
 
+    // Borrar datos: clears auth/data folders without immediately starting a new session
     document.getElementById("btnWaReset").onclick = async () => {
-        if (!confirm("¿Borrar sesión y generar nuevo QR? Se perderán chats guardados localmente.")) return;
+        if (!confirm("¿Borrar todos los datos de sesión (auth y data)? La sesión actual se cerrará.")) return;
+        const btn = document.getElementById("btnWaReset");
+        btn.disabled = true;
         try {
+            updateUI(CLEAN_STATE);
             await post("/whatsapp/reset", {});
-            Toast.info("Generando nuevo QR...");
+            Toast.info("Datos borrados. Generando nuevo QR...");
         } catch (err) {
             Toast.error(err.message);
+        } finally {
+            btn.disabled = false;
         }
     };
 
     container._cleanup = () => unsub?.();
 }
+
 
 async function renderChats(container) {
     let currentJid = null;
