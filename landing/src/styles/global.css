@@ -354,7 +354,12 @@ a {
   transform: translateY(-2px);
 }
 
-/* WhatsApp leads in Bolivia, so it gets the solid button and its own colour. */
+.cta-disabled:hover {
+  border-color: var(--line);
+  color: var(--ink-3);
+  transform: none;
+}
+
 .cta-wa {
   background: #1fa855;
   color: #fff;
@@ -363,6 +368,16 @@ a {
 .cta-wa:hover {
   background: #17914a;
   box-shadow: 0 14px 30px -8px rgba(31, 168, 85, 0.45);
+}
+
+/* Non-link CTAs (e.g. channel temporarily offline). */
+.cta-disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  color: var(--ink-3);
+  pointer-events: none;
+  transform: none;
+  box-shadow: none;
 }
 
 .cta svg,
